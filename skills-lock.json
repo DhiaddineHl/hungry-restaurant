@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "android-clean-architecture": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/android-clean-architecture/SKILL.md",
+      "computedHash": "8f7efca3efcc228560c39c366e846d4bf22e585f9847610634f53b7622f7795c"
+    },
+    "android-kotlin-development": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "skillPath": "skills/android-kotlin-development/SKILL.md",
+      "computedHash": "9b39cad777a0d84b87b9c8093d700b2e4339691e5cf5fb99ccf9a832c9fe4fe1"
+    },
+    "mobile-android-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/mobile-android-design/SKILL.md",
+      "computedHash": "143a60d6a0744a5058adf984e3a64b75cd2ef3714a15557f4ff6fd95e39ff23a"
+    }
+  }
+}

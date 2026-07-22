@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Simple shopping-bag glyph centered in the adaptive safe zone. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,38 L42,36 A12,12 0 0,1 66,36 L66,38 L74,38 A4,4 0 0,1 78,42 L74,76 A6,6 0 0,1 68,82 L40,82 A6,6 0 0,1 34,76 L30,42 A4,4 0 0,1 34,38 Z M48,38 L60,38 L60,36 A6,6 0 0,0 48,36 Z" />
+</vector>

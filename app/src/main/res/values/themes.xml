@@ -1,0 +1,7 @@
+<resources>
+    <!-- Base theme; the Compose UI drives real colors. Splash background uses brand orange. -->
+    <style name="Theme.HungryPOS" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/brand_orange</item>
+        <item name="android:windowBackground">@color/white</item>
+    </style>
+</resources>
