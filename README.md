@@ -16,14 +16,13 @@ tickets on the built-in Sunmi thermal printer, and review daily metrics.
 | UI | **Jetpack Compose** + Material 3 | Declarative, fast to iterate, theme-aware (light/dark). |
 | Architecture | MVVM + repository, manual DI | ViewModels expose `StateFlow`; screens are stateless. |
 | Data | In-memory mock repository | Swap `MockOrderRepository`/`MockAuthRepository` for REST/Firebase later — the interfaces don't change. |
-| Printing | **Sunmi Inner Printer AIDL** | Binds `woyou.aidlservice.jiuiv5.IWoyouService`; no external dependency to resolve. |
+| Printing | **`com.sunmi:printerlibrary`** | Official Sunmi client for the built-in printer service; wraps the AIDL binding so no `.aidl` files are vendored in-app. |
 | Min / Compile SDK | 24 / 35 | Covers older Sunmi firmware while building against a modern SDK. |
 
 ## Project layout
 
 ```
 app/src/main/
-├─ aidl/woyou/aidlservice/jiuiv5/   # Sunmi printer service interface (IWoyouService, ICallback)
 └─ java/com/hungry/restaurant/pos/
    ├─ HungryPosApp.kt               # Application + DI container bootstrap; binds printer
    ├─ MainActivity.kt              # Compose host (edge-to-edge)
@@ -43,13 +42,12 @@ app/src/main/
 
 ## Sunmi printer integration
 
-`SunmiPrinter` binds to the inner-printer service:
+`SunmiPrinter` binds to the inner-printer service via the official client library:
 
 ```kotlin
-Intent().apply {
-    setPackage("woyou.aidlservice.jiuiv5")
-    action = "woyou.aidlservice.jiuiv5.IWoyouService"
-}
+implementation("com.sunmi:printerlibrary:1.0.23") // resolved from maven.sunmi.com, see settings.gradle.kts
+
+InnerPrinterManager.getInstance().bindService(context, innerPrinterCallback)
 ```
 
 - On a real Sunmi device the service binds and `status` becomes `CONNECTED`.
