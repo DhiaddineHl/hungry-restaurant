@@ -1,5 +1,5 @@
-# Keep Sunmi AIDL service interfaces.
--keep class woyou.aidlservice.jiuiv5.** { *; }
+# Keep Sunmi printerlibrary's AIDL-generated interfaces.
+-keep class com.sunmi.peripheral.printer.** { *; }
 
 # kotlinx.serialization
 -keepattributes *Annotation*, InnerClasses

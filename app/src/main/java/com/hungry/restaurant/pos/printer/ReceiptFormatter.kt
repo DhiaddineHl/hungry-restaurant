@@ -3,7 +3,7 @@ package com.hungry.restaurant.pos.printer
 import com.hungry.restaurant.pos.data.model.Order
 import com.hungry.restaurant.pos.data.model.OrderType
 import com.hungry.restaurant.pos.data.model.asCurrency
-import woyou.aidlservice.jiuiv5.IWoyouService
+import com.sunmi.peripheral.printer.SunmiPrinterService
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -13,7 +13,7 @@ import java.util.Locale
  * Column widths assume the default 58mm head (~32 chars). Nothing here throws on
  * its own — the caller wraps the whole print in a buffer transaction.
  */
-internal class ReceiptFormatter(private val svc: IWoyouService) {
+internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
 
     private val timeFmt = SimpleDateFormat("MMM d, HH:mm", Locale.US)
 

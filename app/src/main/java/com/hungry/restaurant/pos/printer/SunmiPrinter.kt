@@ -1,22 +1,21 @@
 package com.hungry.restaurant.pos.printer
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
 import android.util.Log
 import com.hungry.restaurant.pos.data.model.Order
+import com.sunmi.peripheral.printer.InnerPrinterCallback
+import com.sunmi.peripheral.printer.InnerPrinterManager
+import com.sunmi.peripheral.printer.SunmiPrinterService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import woyou.aidlservice.jiuiv5.IWoyouService
 
 /**
- * Binds to the SUNMI inner-printer AIDL service and exposes a small, coroutine
- * friendly surface for printing receipts.
+ * Binds to the SUNMI built-in printer through the official `printerlibrary`
+ * client (`InnerPrinterManager` / `SunmiPrinterService`) and exposes a small,
+ * coroutine friendly surface for printing receipts.
  *
  * On non-Sunmi hardware (or an emulator) the service simply won't bind and
  * [status] settles on [Status.UNAVAILABLE]; callers get a clear failure instead
@@ -30,16 +29,16 @@ class SunmiPrinter(private val appContext: Context) {
     val status: StateFlow<Status> = _status.asStateFlow()
 
     @Volatile
-    private var service: IWoyouService? = null
+    private var service: SunmiPrinterService? = null
 
-    private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            service = IWoyouService.Stub.asInterface(binder)
+    private val callback = object : InnerPrinterCallback() {
+        override fun onConnected(service: SunmiPrinterService) {
+            this@SunmiPrinter.service = service
             _status.value = Status.CONNECTED
             Log.i(TAG, "Sunmi printer service connected")
         }
 
-        override fun onServiceDisconnected(name: ComponentName?) {
+        override fun onDisconnected() {
             service = null
             _status.value = Status.IDLE
             Log.w(TAG, "Sunmi printer service disconnected")
@@ -50,12 +49,8 @@ class SunmiPrinter(private val appContext: Context) {
     fun connect() {
         if (_status.value == Status.CONNECTED || _status.value == Status.CONNECTING) return
         _status.value = Status.CONNECTING
-        val intent = Intent().apply {
-            setPackage(SERVICE_PACKAGE)
-            action = SERVICE_ACTION
-        }
         val bound = try {
-            appContext.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+            InnerPrinterManager.getInstance().bindService(appContext, callback)
         } catch (t: Throwable) {
             Log.e(TAG, "bindService threw", t)
             false
@@ -68,7 +63,7 @@ class SunmiPrinter(private val appContext: Context) {
 
     fun disconnect() {
         if (service != null || _status.value == Status.CONNECTING) {
-            runCatching { appContext.unbindService(connection) }
+            runCatching { InnerPrinterManager.getInstance().unBindService(appContext, callback) }
         }
         service = null
         _status.value = Status.IDLE
@@ -102,7 +97,5 @@ class SunmiPrinter(private val appContext: Context) {
 
     companion object {
         private const val TAG = "SunmiPrinter"
-        private const val SERVICE_PACKAGE = "woyou.aidlservice.jiuiv5"
-        private const val SERVICE_ACTION = "woyou.aidlservice.jiuiv5.IWoyouService"
     }
 }
