@@ -1,8 +1,8 @@
 package com.hungry.restaurant.pos.di
 
 import android.content.Context
-import com.hungry.restaurant.pos.data.repository.AuthRepository
-import com.hungry.restaurant.pos.data.repository.MockAuthRepository
+import com.hungry.restaurant.pos.auth.AuthManager
+import com.hungry.restaurant.pos.auth.EncryptedAuthStateStorage
 import com.hungry.restaurant.pos.data.repository.MockOrderRepository
 import com.hungry.restaurant.pos.data.repository.OrderRepository
 import com.hungry.restaurant.pos.printer.SunmiPrinter
@@ -13,7 +13,7 @@ import com.hungry.restaurant.pos.printer.SunmiPrinter
  * for real ones is a one-line change here.
  */
 class AppContainer(context: Context) {
-    val authRepository: AuthRepository = MockAuthRepository()
+    val authManager: AuthManager = AuthManager(context, EncryptedAuthStateStorage(context))
     val orderRepository: OrderRepository = MockOrderRepository()
     val sunmiPrinter: SunmiPrinter = SunmiPrinter(context.applicationContext)
 }

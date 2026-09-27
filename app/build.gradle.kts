@@ -19,6 +19,11 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // Scheme AppAuth's RedirectUriReceiverActivity registers for the OAuth/OIDC
+        // redirect (com.hungry.restaurant.pos:/oauth2redirect) — must match the
+        // Keycloak client's registered redirect URI.
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.hungry.restaurant.pos"
     }
 
     buildTypes {
@@ -73,6 +78,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
     implementation(libs.sunmi.printerlibrary)
+
+    implementation(libs.openid.app.auth)
+    implementation(libs.androidx.security.crypto)
+    implementation(libs.androidx.browser)
 
     debugImplementation(libs.androidx.ui.tooling)
 }

@@ -20,6 +20,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.hungry.restaurant.pos.ui.screens.account.AccountScreen
 import com.hungry.restaurant.pos.ui.screens.active.ActiveOrdersScreen
 import com.hungry.restaurant.pos.ui.screens.details.OrderDetailsScreen
 import com.hungry.restaurant.pos.ui.screens.history.OrderHistoryScreen
@@ -87,6 +88,16 @@ fun AppNavigation() {
             }
             composable(Routes.METRICS) {
                 MetricsScreen(contentPadding = padding)
+            }
+            composable(Routes.ACCOUNT) {
+                AccountScreen(
+                    contentPadding = padding,
+                    onLoggedOut = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                )
             }
             composable(
                 route = Routes.DETAILS_PATTERN,
