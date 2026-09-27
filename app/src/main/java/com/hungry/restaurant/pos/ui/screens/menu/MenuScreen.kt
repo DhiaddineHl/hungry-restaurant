@@ -2,6 +2,7 @@ package com.hungry.restaurant.pos.ui.screens.menu
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -86,6 +87,7 @@ fun MenuScreen(
                         onClick = { viewModel.setCategory(null) },
                         label = { Text("All") },
                         shape = RoundedCornerShape(50),
+                        colors = selectedChipColors(),
                     )
                     state.categories.forEach { category ->
                         FilterChip(
@@ -93,6 +95,7 @@ fun MenuScreen(
                             onClick = { viewModel.setCategory(category) },
                             label = { Text(category) },
                             shape = RoundedCornerShape(50),
+                            colors = selectedChipColors(),
                         )
                     }
                 }
@@ -123,33 +126,35 @@ fun MenuScreen(
             item = item,
             onDismiss = { sheetItem = null },
             onToggleAvailable = { viewModel.setAvailable(item, it) },
-            onSave = { minutes ->
-                viewModel.setPrepTime(item, minutes)
+            onSave = { minutes, applyToCategory ->
+                viewModel.setPrepTime(item, minutes, applyToCategory)
                 sheetItem = null
             },
         )
     }
 }
 
+/** No card/border - the redesign shows menu items as a flat list, separated by hairline dividers only. */
 @Composable
 private fun MenuItemRow(item: MenuItem, onToggle: (Boolean) -> Unit, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier
+    Column(
+        Modifier
             .fillMaxWidth()
-            .then(Modifier),
+            .clickable(onClick = onClick),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(item.name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                val nameAlpha = if (item.available) 1f else 0.5f
+                Text(
+                    item.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = nameAlpha),
+                )
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     item.price?.let {
@@ -167,15 +172,23 @@ private fun MenuItemRow(item: MenuItem, onToggle: (Boolean) -> Unit, onClick: ()
                     Text(
                         item.unavailableReason ?: "Off today",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = com.hungry.restaurant.pos.ui.theme.StatusPreparing,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
             Switch(checked = item.available, onCheckedChange = onToggle)
         }
+        androidx.compose.material3.Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
     }
 }
+
+/** Selected = high-contrast onSurface fill (navy in light, near-white in dark) - matches the redesign's chip style, not the default tinted-orange Material one. */
+@Composable
+private fun selectedChipColors() = FilterChipDefaults.filterChipColors(
+    selectedContainerColor = MaterialTheme.colorScheme.onSurface,
+    selectedLabelColor = MaterialTheme.colorScheme.surface,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,15 +196,18 @@ private fun PrepTimeSheet(
     item: MenuItem,
     onDismiss: () -> Unit,
     onToggleAvailable: (Boolean) -> Unit,
-    onSave: (Int) -> Unit,
+    onSave: (minutes: Int, applyToCategory: Boolean) -> Unit,
 ) {
     var minutes by remember(item.id) { mutableStateOf(item.prepTimeMinutes ?: 10) }
+    var applyToCategory by remember(item.id) { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(Modifier.padding(24.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-            item.category?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Text(
+                listOfNotNull(item.category, item.price?.asCurrency(item.currency)).joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(20.dp))
             Row(
                 Modifier.fillMaxWidth(),
@@ -221,12 +237,30 @@ private fun PrepTimeSheet(
                         onClick = { minutes = preset },
                         label = { Text("$preset") },
                         shape = RoundedCornerShape(50),
+                        colors = selectedChipColors(),
                     )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Used to suggest the ready time on new orders and the customer's ETA. Staff can still adjust it per order.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            item.category?.let { category ->
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Apply to all $category", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Switch(checked = applyToCategory, onCheckedChange = { applyToCategory = it })
                 }
             }
             Spacer(Modifier.height(24.dp))
             androidx.compose.material3.Button(
-                onClick = { onSave(minutes) },
+                onClick = { onSave(minutes, applyToCategory) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
             ) { Text("Save") }

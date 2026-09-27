@@ -72,17 +72,21 @@ class SunmiPrinter(private val appContext: Context) {
     val isConnected: Boolean get() = service != null
 
     /**
-     * Print a formatted kitchen/customer receipt for [order].
+     * Print a formatted kitchen/customer receipt for [order]. [readyInMinutes],
+     * when given, prints as a "Ready in: X min" footer line - the backend has
+     * no per-order prep-time field, so this is whatever the accepting staff
+     * member chose on the incoming-order screen (or the restaurant's own
+     * default), not something read back from the order itself.
      * Runs off the main thread; returns a [Result] describing success/failure.
      */
-    suspend fun printReceipt(order: Order): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun printReceipt(order: Order, readyInMinutes: Int? = null): Result<Unit> = withContext(Dispatchers.IO) {
         val svc = service
             ?: return@withContext Result.failure(
                 IllegalStateException("Printer not connected. Tap the printer icon to reconnect."),
             )
         runCatching {
             svc.enterPrinterBuffer(true)
-            ReceiptFormatter(svc).print(order)
+            ReceiptFormatter(svc).print(order, readyInMinutes)
             svc.lineWrap(3, null)
             runCatching { svc.cutPaper(null) } // devices without a cutter simply ignore this
             svc.exitPrinterBuffer(true)

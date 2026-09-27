@@ -15,10 +15,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,14 +42,21 @@ import com.hungry.restaurant.pos.ui.theme.HungryOrange
  * over whatever screen was active when [com.hungry.restaurant.pos.data.repository.OrderRepository.newOrderEvents]
  * fires. `queuedCount` is the mockup's "1 more waiting" indicator for a second
  * order that arrived while this one was still up.
+ *
+ * `defaultReadyInMinutes` seeds the "Ready in" stepper (from the restaurant's
+ * own Settings default) - the backend has no per-order prep-time field, so
+ * whatever the staff member picks here is used only to print on the ticket,
+ * never sent anywhere.
  */
 @Composable
 fun IncomingOrderAlertScreen(
     order: Order,
     queuedCount: Int,
-    onAccept: () -> Unit,
+    defaultReadyInMinutes: Int,
+    onAccept: (readyInMinutes: Int) -> Unit,
     onReject: () -> Unit,
 ) {
+    var readyInMinutes by remember(order.id) { mutableIntStateOf(defaultReadyInMinutes) }
     Box(
         Modifier
             .fillMaxSize()
@@ -112,9 +125,15 @@ fun IncomingOrderAlertScreen(
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
+            ReadyInStepper(
+                minutes = readyInMinutes,
+                onChange = { readyInMinutes = it },
+            )
+
+            Spacer(Modifier.height(16.dp))
             Button(
-                onClick = onAccept,
+                onClick = { onAccept(readyInMinutes) },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = HungryOrange),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -129,6 +148,48 @@ fun IncomingOrderAlertScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
                 Text("Reject order")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadyInStepper(minutes: Int, onChange: (Int) -> Unit) {
+    Column {
+        Text("Ready in", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.7f))
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = { if (minutes > 5) onChange(minutes - 5) },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+            ) { Text("−") }
+            Text(
+                "$minutes min",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
+            OutlinedButton(
+                onClick = { onChange(minutes + 5) },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+            ) { Text("+") }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(10, 15, 20, 30, 45).forEach { preset ->
+                FilterChip(
+                    selected = minutes == preset,
+                    onClick = { onChange(preset) },
+                    label = { Text("$preset") },
+                    shape = RoundedCornerShape(50),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.White.copy(alpha = 0.08f),
+                        labelColor = Color.White.copy(alpha = 0.8f),
+                        selectedContainerColor = HungryOrange,
+                        selectedLabelColor = Color.White,
+                    ),
+                )
             }
         }
     }

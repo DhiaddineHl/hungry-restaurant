@@ -68,8 +68,18 @@ class MenuViewModel(private val menuRepository: MenuRepository) : ViewModel() {
         }
     }
 
-    fun setPrepTime(item: MenuItem, minutes: Int) {
-        viewModelScope.launch { menuRepository.setPrepTime(item.id, minutes) }
+    fun setPrepTime(item: MenuItem, minutes: Int, applyToCategory: Boolean = false) {
+        viewModelScope.launch {
+            if (applyToCategory && item.category != null) {
+                // No bulk endpoint on the backend - applied as one call per item in the
+                // category, same as a staff member doing it one by one, just automated.
+                uiState.value.items
+                    .filter { it.category == item.category }
+                    .forEach { menuRepository.setPrepTime(it.id, minutes) }
+            } else {
+                menuRepository.setPrepTime(item.id, minutes)
+            }
+        }
     }
 
     companion object {

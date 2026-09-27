@@ -81,8 +81,8 @@ fun StatsScreen(
                         label = { Text(p.name.lowercase().replaceFirstChar(Char::uppercase)) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedContainerColor = MaterialTheme.colorScheme.onSurface,
+                            selectedLabelColor = MaterialTheme.colorScheme.surface,
                         ),
                     )
                 }
@@ -150,7 +150,6 @@ private fun KpiTile(label: String, value: String, modifier: Modifier = Modifier,
         modifier
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
             .padding(14.dp),
     ) {
         Text(
@@ -168,6 +167,8 @@ private fun KpiTile(label: String, value: String, modifier: Modifier = Modifier,
 private fun HourlyRevenueCard(s: StatsSummary) {
     SectionCard(title = "Revenue by hour") {
         val max = (s.hourlyRevenue.maxOrNull() ?: 0.0).coerceAtLeast(1.0)
+        val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val neutralBar = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -176,20 +177,17 @@ private fun HourlyRevenueCard(s: StatsSummary) {
         ) {
             val count = s.hourlyRevenue.size
             if (count == 0) return@Canvas
-            val gap = 2.dp.toPx()
+            val gap = 3.dp.toPx()
             val barWidth = (size.width - gap * (count - 1)) / count
+            // Only the current hour is highlighted in the brand color - every other
+            // bar is a neutral grey, matching the mockup rather than an all-orange chart.
             s.hourlyRevenue.forEachIndexed { i, v ->
                 val barHeight = (v / max).toFloat() * size.height
                 val x = i * (barWidth + gap)
-                drawRoundRect(
-                    color = HungryOrange.copy(alpha = 0.18f),
-                    topLeft = Offset(x, 0f),
-                    size = Size(barWidth, size.height),
-                    cornerRadius = CornerRadius(3f, 3f),
-                )
+                val isCurrent = i == currentHour
                 if (barHeight > 0f) {
                     drawRoundRect(
-                        color = HungryOrange,
+                        color = if (isCurrent) HungryOrange else neutralBar,
                         topLeft = Offset(x, size.height - barHeight),
                         size = Size(barWidth, barHeight),
                         cornerRadius = CornerRadius(3f, 3f),
@@ -261,7 +259,6 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
             .padding(16.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)

@@ -20,18 +20,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.SwitchAccount
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -137,7 +137,6 @@ fun AccountScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surface)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
                     .padding(16.dp),
             ) {
                 Column {
@@ -151,41 +150,45 @@ fun AccountScreen(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
-        OutlinedButton(
-            onClick = onSwitchStaff,
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surface),
         ) {
-            Icon(Icons.Outlined.SwitchAccount, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Switch staff")
+            AccountListRow(Icons.Outlined.SwitchAccount, "Switch staff", onSwitchStaff)
+            AccountListRow(Icons.Outlined.ManageAccounts, "Manage account") {
+                context.startActivity(viewModel.buildManageAccountIntent())
+            }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(28.dp))
 
-        OutlinedButton(
-            onClick = { context.startActivity(viewModel.buildManageAccountIntent()) },
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Icon(Icons.Outlined.ManageAccounts, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Manage account")
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Button(
+        TextButton(
             onClick = { scope.launch { logoutLauncher.launch(viewModel.buildLogoutIntent()) } },
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NegativeRed),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = NegativeRed, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("End shift & log out", color = Color.White)
+            Text("End shift & log out", color = NegativeRed)
         }
+    }
+}
+
+@Composable
+private fun AccountListRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

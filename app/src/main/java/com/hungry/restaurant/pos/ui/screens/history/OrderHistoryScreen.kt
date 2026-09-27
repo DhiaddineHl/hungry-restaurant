@@ -1,13 +1,10 @@
 package com.hungry.restaurant.pos.ui.screens.history
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -26,13 +24,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hungry.restaurant.pos.data.model.asCurrency
-import com.hungry.restaurant.pos.ui.components.OrderCard
+import com.hungry.restaurant.pos.ui.components.HistoryOrderRow
 
 @Composable
 fun OrderHistoryScreen(
@@ -83,8 +79,8 @@ fun OrderHistoryScreen(
                         label = { Text(filter.label) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedContainerColor = MaterialTheme.colorScheme.onSurface,
+                            selectedLabelColor = MaterialTheme.colorScheme.surface,
                         ),
                     )
                 }
@@ -117,7 +113,8 @@ fun OrderHistoryScreen(
         }
 
         items(state.visibleOrders, key = { it.id }) { order ->
-            OrderCard(order = order, onClick = { onOrderClick(order.id) })
+            HistoryOrderRow(order = order, onClick = { onOrderClick(order.id) })
+            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
         }
     }
 }

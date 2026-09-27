@@ -1,7 +1,6 @@
 package com.hungry.restaurant.pos.ui.screens.details
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -47,6 +47,8 @@ import com.hungry.restaurant.pos.data.model.OrderItem
 import com.hungry.restaurant.pos.data.model.OrderStatus
 import com.hungry.restaurant.pos.data.model.asCurrency
 import com.hungry.restaurant.pos.ui.components.StatusPill
+import com.hungry.restaurant.pos.ui.theme.HungryOrange
+import com.hungry.restaurant.pos.ui.util.clockTime
 import com.hungry.restaurant.pos.ui.util.dateTime
 import com.hungry.restaurant.pos.ui.util.visual
 
@@ -58,6 +60,7 @@ fun OrderDetailsScreen(
     viewModel: OrderDetailsViewModel = viewModel(factory = OrderDetailsViewModel.Factory),
 ) {
     val order by viewModel.order.collectAsStateWithLifecycle()
+    val defaultPrepTimeMinutes by viewModel.defaultPrepTimeMinutes.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { onMessage(it) }
@@ -107,6 +110,9 @@ fun OrderDetailsScreen(
         ) {
             Spacer(Modifier.height(2.dp))
             StatusHeader(current)
+            if (current.status == OrderStatus.CONFIRMED || current.status == OrderStatus.PREPARING) {
+                DueTimeCard(current, defaultPrepTimeMinutes)
+            }
             CustomerCard(current)
             ItemsCard(current)
             TotalsCard(current)
@@ -140,6 +146,42 @@ private fun StatusHeader(order: Order) {
             }
             StatusPill(vis.label, vis.color)
         }
+    }
+}
+
+@Composable
+private fun DueTimeCard(order: Order, defaultPrepTimeMinutes: Int) {
+    val confirmedAt = order.confirmedAtMillis ?: return
+    val dueAtMillis = confirmedAt + defaultPrepTimeMinutes * 60_000L
+    val now = System.currentTimeMillis()
+    val elapsedFraction = ((now - confirmedAt).toFloat() / (dueAtMillis - confirmedAt).toFloat()).coerceIn(0f, 1f)
+    val minutesLeft = ((dueAtMillis - now) / 60_000L).toInt()
+    val overdue = minutesLeft < 0
+
+    Card {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                "Accepted ${clockTime(confirmedAt)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                if (overdue) "Due ${clockTime(dueAtMillis)} · ${-minutesLeft} min overdue" else "Due ${clockTime(dueAtMillis)} · $minutesLeft min left",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { elapsedFraction },
+            color = if (overdue) MaterialTheme.colorScheme.error else HungryOrange,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(50)),
+        )
     }
 }
 
@@ -216,7 +258,7 @@ private fun ItemRow(item: OrderItem, currency: String?) {
         }
         item.modifiers.forEach { mod ->
             Text(
-                "• $mod",
+                mod,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 26.dp, top = 2.dp),
@@ -326,7 +368,7 @@ private fun ActionBar(order: Order, viewModel: OrderDetailsViewModel) {
     }
 }
 
-/** Simple bordered surface card used throughout the detail screen. */
+/** Flat, borderless surface card - the redesign has no card outlines, only white-on-cream contrast. */
 @Composable
 private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Column(
@@ -334,7 +376,6 @@ private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnS
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
             .padding(16.dp),
         content = content,
     )

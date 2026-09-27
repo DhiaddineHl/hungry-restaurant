@@ -73,6 +73,9 @@ class StaffPickerViewModel(
      */
     val sessionInvalid = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    /** One-shot user-facing messages (snackbar) - e.g. why "Add" silently did nothing before this existed. */
+    val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+
     init {
         viewModelScope.launch {
             val resolved = sessionRepository.refresh()
@@ -83,6 +86,7 @@ class StaffPickerViewModel(
             }
             appContainer.startOrderPolling()
             staffRepository.refresh()
+            appContainer.posSettingsRepository.refresh()
             _loading.value = false
         }
     }
@@ -125,11 +129,20 @@ class StaffPickerViewModel(
         }
     }
 
-    /** First-run setup: no staff exist yet, so the signed-in manager adds themselves. */
+    /**
+     * First-run setup: no staff exist yet, so the signed-in manager adds
+     * themselves. A failure used to leave the dialog just sitting there with
+     * no explanation - now it's reported so "nothing happened" is never
+     * silent.
+     */
     fun addStaffMember(name: String, pin: String, onDone: (StaffMember?) -> Unit) {
         viewModelScope.launch {
-            val created = staffRepository.addStaff(name, "MANAGER", pin).getOrNull()
-            onDone(created)
+            staffRepository.addStaff(name, "MANAGER", pin)
+                .onSuccess { onDone(it) }
+                .onFailure {
+                    messages.tryEmit(it.message ?: "Couldn't add that staff member - please try again.")
+                    onDone(null)
+                }
         }
     }
 

@@ -16,7 +16,7 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
 
     private val timeFmt = SimpleDateFormat("MMM d, HH:mm", Locale.US)
 
-    fun print(order: Order) {
+    fun print(order: Order, readyInMinutes: Int? = null) {
         header(order)
         divider()
         items(order)
@@ -28,6 +28,10 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
             svc.printText("Note: ", null)
             bold(false)
             svc.printText("$note\n", null)
+        }
+        readyInMinutes?.let {
+            left()
+            svc.printText("Ready in: $it min\n", null)
         }
         footer(order)
     }

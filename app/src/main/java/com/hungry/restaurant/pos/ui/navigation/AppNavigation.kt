@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -60,6 +61,7 @@ fun AppNavigation() {
     // arriving while one is still on screen doesn't get lost, just counted.
     val pendingAlerts = remember { mutableStateListOf<Order>() }
     var staffSignedIn by remember { mutableStateOf(app.container.currentShift.currentStaff.value != null) }
+    val posSettings by app.container.posSettingsRepository.settings.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         app.container.currentShift.currentStaff.collect { staffSignedIn = it != null }
@@ -116,6 +118,7 @@ fun AppNavigation() {
                             popUpTo(0) { inclusive = true }
                         }
                     },
+                    onMessage = onMessage,
                 )
             }
             composable(Routes.ACTIVE) {
@@ -182,11 +185,17 @@ fun AppNavigation() {
             IncomingOrderAlertScreen(
                 order = currentAlert,
                 queuedCount = pendingAlerts.size - 1,
-                onAccept = {
+                defaultReadyInMinutes = posSettings?.defaultPrepTimeMinutes ?: 20,
+                onAccept = { readyInMinutes ->
                     pendingAlerts.removeAt(0)
                     navController.navigate(Routes.details(currentAlert.id))
                     scope.launch {
                         app.container.orderRepository.accept(currentAlert.id)
+                            .onSuccess {
+                                if (posSettings?.autoPrintOnAccept != false) {
+                                    app.container.sunmiPrinter.printReceipt(currentAlert, readyInMinutes)
+                                }
+                            }
                             .onFailure { onMessage(it.message ?: "Couldn't accept order #${currentAlert.code}") }
                     }
                 },

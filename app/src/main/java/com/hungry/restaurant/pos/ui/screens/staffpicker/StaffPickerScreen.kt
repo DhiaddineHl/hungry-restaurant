@@ -49,6 +49,7 @@ import com.hungry.restaurant.pos.ui.theme.HungryOrange
 fun StaffPickerScreen(
     onSignedIn: () -> Unit,
     onManagerLogin: () -> Unit,
+    onMessage: (String) -> Unit,
     viewModel: StaffPickerViewModel = viewModel(factory = StaffPickerViewModel.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,6 +60,9 @@ fun StaffPickerScreen(
     }
     LaunchedEffect(Unit) {
         viewModel.sessionInvalid.collect { onManagerLogin() }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { onMessage(it) }
     }
 
     Column(
@@ -232,7 +236,7 @@ private fun KeypadKey(
 ) {
     Box(
         modifier
-            .aspectRatio(1.6f)
+            .aspectRatio(1.2f)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick),
