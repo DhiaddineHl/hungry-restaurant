@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest override, merged on top of the main one only for debug builds.
+
+  The main manifest declares no `usesCleartextTraffic`, so it defaults to false on
+  targetSdk 28+ (this app targets 35) — plain `http://` is blocked by the OS network
+  security policy. That's the right default for a release build, but the local
+  docker-compose backend (Keycloak on :8081, the gateway on :8082 — see
+  app/build.gradle.kts' apiBaseUrl/keycloakBaseUrl) is plain HTTP on the dev LAN, so a
+  debug build needs it allowed. A release build must point apiBaseUrl/keycloakBaseUrl
+  at real https:// addresses instead of relying on this.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>

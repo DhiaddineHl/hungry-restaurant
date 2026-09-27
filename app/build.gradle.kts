@@ -24,6 +24,24 @@ android {
         // redirect (com.hungry.restaurant.pos:/oauth2redirect) — must match the
         // Keycloak client's registered redirect URI.
         manifestPlaceholders["appAuthRedirectScheme"] = "com.hungry.restaurant.pos"
+
+        // The hungry-app API gateway. Defaults to the same LAN convention the customer
+        // app's .env.example uses (EXPO_PUBLIC_API_URL) — a POS terminal on the
+        // restaurant's own network reaching the backend's docker-compose gateway on
+        // :8082. Override per-build with `-PapiBaseUrl=https://...` (e.g. a deployed
+        // gateway) without editing source.
+        val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
+            ?: "http://192.168.1.100:8082/"
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+
+        // Keycloak, reached DIRECTLY (not through the gateway - same reasoning as the
+        // customer app's EXPO_PUBLIC_KEYCLOAK_URL: the gateway only routes to hungry-app,
+        // so /realms/... isn't one of its routes). Defaults to the local docker-compose
+        // instance on :8081. Override with `-PkeycloakBaseUrl=https://...` for a deployed
+        // Keycloak without editing source.
+        val keycloakBaseUrl = (project.findProperty("keycloakBaseUrl") as String?)
+            ?: "http://192.168.1.100:8081"
+        buildConfigField("String", "KEYCLOAK_BASE_URL", "\"$keycloakBaseUrl\"")
     }
 
     buildTypes {
@@ -82,6 +100,11 @@ dependencies {
     implementation(libs.openid.app.auth)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.browser)
+
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.kotlinx.serialization.converter)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging.interceptor)
 
     debugImplementation(libs.androidx.ui.tooling)
 }

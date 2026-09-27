@@ -8,58 +8,93 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hungry.restaurant.pos.HungryPosApp
 import com.hungry.restaurant.pos.data.model.Order
 import com.hungry.restaurant.pos.data.model.OrderStatus
-import com.hungry.restaurant.pos.data.repository.OrderRepository
+import com.hungry.restaurant.pos.data.repository.OrderHistoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
-enum class HistoryFilter(val label: String) {
-    ALL("All"),
-    COMPLETED("Completed"),
-    CANCELLED("Cancelled"),
-}
+enum class DateFilter(val label: String) { TODAY("Today"), YESTERDAY("Yesterday"), WEEK("7 days") }
 
 data class HistoryUiState(
-    val filter: HistoryFilter = HistoryFilter.ALL,
-    val orders: List<Order> = emptyList(),
-    val completedCount: Int = 0,
-    val cancelledCount: Int = 0,
-    val totalRevenueCents: Int = 0,
-)
-
-class OrderHistoryViewModel(orders: OrderRepository) : ViewModel() {
-
-    private val _filter = MutableStateFlow(HistoryFilter.ALL)
-
-    val uiState: StateFlow<HistoryUiState> = combine(orders.orders, _filter) { list, filter ->
-        val past = list
-            .filter { it.status == OrderStatus.COMPLETED || it.status == OrderStatus.CANCELLED }
-            .sortedByDescending { it.placedAtMillis }
-        val visible = when (filter) {
-            HistoryFilter.ALL -> past
-            HistoryFilter.COMPLETED -> past.filter { it.status == OrderStatus.COMPLETED }
-            HistoryFilter.CANCELLED -> past.filter { it.status == OrderStatus.CANCELLED }
+    val dateFilter: DateFilter = DateFilter.TODAY,
+    val query: String = "",
+    val allOrders: List<Order> = emptyList(),
+    val loading: Boolean = true,
+) {
+    val visibleOrders: List<Order>
+        get() {
+            val (start, end) = dateFilter.range()
+            return allOrders
+                .filter { it.status.isPast }
+                .filter { it.placedAtMillis in start until end }
+                .filter {
+                    query.isBlank() ||
+                        it.code.contains(query, ignoreCase = true) ||
+                        it.customerName.contains(query, ignoreCase = true)
+                }
+                .sortedByDescending { it.placedAtMillis }
         }
-        HistoryUiState(
-            filter = filter,
-            orders = visible,
-            completedCount = past.count { it.status == OrderStatus.COMPLETED },
-            cancelledCount = past.count { it.status == OrderStatus.CANCELLED },
-            totalRevenueCents = past.filter { it.status == OrderStatus.COMPLETED }.sumOf { it.totalCents },
-        )
+
+    val summaryCount: Int get() = visibleOrders.size
+    val summaryRevenue: Double get() = visibleOrders.filter { it.status == OrderStatus.FINISHED }.sumOf { it.total }
+    val summaryCurrency: String? get() = visibleOrders.firstOrNull()?.currency
+}
+
+private fun DateFilter.range(): Pair<Long, Long> {
+    val cal = Calendar.getInstance()
+    cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+    val startOfToday = cal.timeInMillis
+    return when (this) {
+        DateFilter.TODAY -> startOfToday to Long.MAX_VALUE
+        DateFilter.YESTERDAY -> (startOfToday - DAY_MS) to startOfToday
+        DateFilter.WEEK -> (startOfToday - 7 * DAY_MS) to Long.MAX_VALUE
+    }
+}
+
+private const val DAY_MS = 24 * 60 * 60 * 1000L
+
+class OrderHistoryViewModel(private val historyRepository: OrderHistoryRepository) : ViewModel() {
+
+    private val _dateFilter = MutableStateFlow(DateFilter.TODAY)
+    private val _query = MutableStateFlow("")
+    private val _allOrders = MutableStateFlow<List<Order>>(emptyList())
+    private val _loading = MutableStateFlow(true)
+
+    val uiState: StateFlow<HistoryUiState> = combine(
+        _dateFilter, _query, _allOrders, _loading,
+    ) { filter, query, orders, loading ->
+        HistoryUiState(filter, query, orders, loading)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
 
-    fun setFilter(filter: HistoryFilter) {
-        _filter.value = filter
+    init {
+        refresh()
+    }
+
+    fun setDateFilter(filter: DateFilter) {
+        _dateFilter.value = filter
+    }
+
+    fun setQuery(query: String) {
+        _query.value = query
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _loading.value = true
+            _allOrders.value = historyRepository.recentOrders()
+            _loading.value = false
+        }
     }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as HungryPosApp
-                OrderHistoryViewModel(app.container.orderRepository)
+                OrderHistoryViewModel(app.container.orderHistoryRepository)
             }
         }
     }

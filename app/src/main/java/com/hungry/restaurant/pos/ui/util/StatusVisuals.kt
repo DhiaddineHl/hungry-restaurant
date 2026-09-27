@@ -17,9 +17,11 @@ data class StatusVisual(
 )
 
 fun OrderStatus.visual(): StatusVisual = when (this) {
-    OrderStatus.NEW -> StatusVisual("New", StatusNew, "Accept")
+    OrderStatus.CREATED -> StatusVisual("New", StatusNew, "Accept")
+    OrderStatus.CONFIRMED -> StatusVisual("Preparing", StatusPreparing, "Mark ready")
     OrderStatus.PREPARING -> StatusVisual("Preparing", StatusPreparing, "Mark ready")
-    OrderStatus.READY -> StatusVisual("Ready", StatusReady, "Complete")
-    OrderStatus.COMPLETED -> StatusVisual("Completed", StatusCompleted, null)
+    OrderStatus.READY -> StatusVisual("Ready", StatusReady, null)
+    OrderStatus.FINISHED -> StatusVisual("Completed", StatusCompleted, null)
+    OrderStatus.REJECTED -> StatusVisual("Rejected", StatusCancelled, null)
     OrderStatus.CANCELLED -> StatusVisual("Cancelled", StatusCancelled, null)
 }

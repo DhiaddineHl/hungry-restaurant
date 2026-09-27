@@ -3,6 +3,7 @@ package com.hungry.restaurant.pos.ui.screens.account
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +21,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.SwitchAccount
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -48,10 +52,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(
     contentPadding: PaddingValues,
+    onBack: () -> Unit,
+    onSwitchStaff: () -> Unit,
     onLoggedOut: () -> Unit,
     viewModel: AccountViewModel = viewModel(factory = AccountViewModel.Factory),
 ) {
     val user by viewModel.authUser.collectAsStateWithLifecycle()
+    val restaurant by viewModel.restaurant.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -70,18 +77,19 @@ fun AccountScreen(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(
-                top = contentPadding.calculateTopPadding() + 24.dp,
+                top = contentPadding.calculateTopPadding(),
                 bottom = contentPadding.calculateBottomPadding() + 24.dp,
                 start = 20.dp,
                 end = 20.dp,
             ),
     ) {
-        Text(
-            "Account",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(Modifier.height(20.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+            }
+            Text("Account", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+        }
+        Spacer(Modifier.height(12.dp))
 
         val current = user
         Column(
@@ -122,33 +130,62 @@ fun AccountScreen(
             }
         }
 
+        restaurant?.let { profile ->
+            Spacer(Modifier.height(16.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+            ) {
+                Column {
+                    Text(profile.name, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        if (profile.acceptingOrders) "Open for orders" else "Closed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(24.dp))
+
+        OutlinedButton(
+            onClick = onSwitchStaff,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+        ) {
+            Icon(Icons.Outlined.SwitchAccount, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Switch staff")
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = { context.startActivity(viewModel.buildManageAccountIntent()) },
             shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             Icon(Icons.Outlined.ManageAccounts, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text("Manage account")
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = { scope.launch { logoutLauncher.launch(viewModel.buildLogoutIntent()) } },
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = NegativeRed),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Log out", color = Color.White)
+            Text("End shift & log out", color = Color.White)
         }
     }
 }

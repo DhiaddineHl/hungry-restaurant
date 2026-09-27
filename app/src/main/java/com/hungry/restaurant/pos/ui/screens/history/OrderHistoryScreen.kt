@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,26 +56,30 @@ fun OrderHistoryScreen(
     ) {
         item {
             Text(
-                "Order History",
+                "History",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
 
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryCard("Completed", state.completedCount.toString(), Modifier.weight(1f))
-                SummaryCard("Revenue", state.totalRevenueCents.asCurrency(), Modifier.weight(1f))
-                SummaryCard("Cancelled", state.cancelledCount.toString(), Modifier.weight(1f))
-            }
+            OutlinedTextField(
+                value = state.query,
+                onValueChange = viewModel::setQuery,
+                placeholder = { Text("Order # or customer") },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HistoryFilter.entries.forEach { filter ->
+                DateFilter.entries.forEach { filter ->
                     FilterChip(
-                        selected = state.filter == filter,
-                        onClick = { viewModel.setFilter(filter) },
+                        selected = state.dateFilter == filter,
+                        onClick = { viewModel.setDateFilter(filter) },
                         label = { Text(filter.label) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
@@ -83,7 +91,15 @@ fun OrderHistoryScreen(
             }
         }
 
-        if (state.orders.isEmpty()) {
+        item {
+            Text(
+                "${state.summaryCount} orders · ${state.summaryRevenue.asCurrency(state.summaryCurrency)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (!state.loading && state.visibleOrders.isEmpty()) {
             item {
                 Box(
                     Modifier
@@ -100,36 +116,8 @@ fun OrderHistoryScreen(
             }
         }
 
-        items(state.orders, key = { it.id }) { order ->
-            OrderCard(
-                order = order,
-                onClick = { onOrderClick(order.id) },
-                showCountdown = false,
-            )
+        items(state.visibleOrders, key = { it.id }) { order ->
+            OrderCard(order = order, onClick = { onOrderClick(order.id) })
         }
-    }
-}
-
-@Composable
-private fun SummaryCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
-            .padding(14.dp),
-    ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.padding(top = 2.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

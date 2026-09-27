@@ -1,7 +1,6 @@
 package com.hungry.restaurant.pos.printer
 
 import com.hungry.restaurant.pos.data.model.Order
-import com.hungry.restaurant.pos.data.model.OrderType
 import com.hungry.restaurant.pos.data.model.asCurrency
 import com.sunmi.peripheral.printer.SunmiPrinterService
 import java.text.SimpleDateFormat
@@ -23,7 +22,7 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
         items(order)
         divider()
         totals(order)
-        order.customerNote?.takeIf { it.isNotBlank() }?.let { note ->
+        order.comment?.takeIf { it.isNotBlank() }?.let { note ->
             svc.printText("\n", null)
             left(); bold(true)
             svc.printText("Note: ", null)
@@ -38,16 +37,12 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
         big()
         svc.printText("HUNGRY KITCHEN\n", null)
         normal()
-        svc.printText("${order.platform.displayName} · ${order.type.label()}\n", null)
         big()
-        svc.printText("#${order.shortCode}\n", null)
+        svc.printText("#${order.code}\n", null)
         normal()
         svc.printText("${order.customerName}\n", null)
         svc.printText("${timeFmt.format(Date(order.placedAtMillis))}\n", null)
-        if (order.type == OrderType.DELIVERY) {
-            order.deliveryAddress?.let { svc.printText("$it\n", null) }
-            order.courierName?.let { svc.printText("Courier: $it\n", null) }
-        }
+        order.dropoffAddress?.let { svc.printText("$it\n", null) }
     }
 
     private fun items(order: Order) {
@@ -55,29 +50,28 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
         order.items.forEach { item ->
             columns(
                 "${item.quantity}x ${item.name}",
-                item.lineTotalCents.asCurrency(),
+                item.lineTotal.asCurrency(order.currency),
             )
             item.modifiers.forEach { mod ->
                 svc.printText("   - $mod\n", null)
             }
-            item.note?.takeIf { it.isNotBlank() }?.let { svc.printText("   * $it\n", null) }
         }
     }
 
     private fun totals(order: Order) {
-        columns("Subtotal", order.subtotalCents.asCurrency())
-        if (order.taxCents > 0) columns("Tax", order.taxCents.asCurrency())
-        if (order.deliveryFeeCents > 0) columns("Delivery", order.deliveryFeeCents.asCurrency())
-        if (order.tipCents > 0) columns("Tip", order.tipCents.asCurrency())
+        columns("Subtotal", order.subtotal.asCurrency(order.currency))
+        if (order.discountTotal > 0) columns("Discount", "-${order.discountTotal.asCurrency(order.currency)}")
+        if (order.deliveryFee > 0) columns("Delivery", order.deliveryFee.asCurrency(order.currency))
+        if (order.serviceFee > 0) columns("Service", order.serviceFee.asCurrency(order.currency))
+        if (order.additionalFees > 0) columns("Additional", order.additionalFees.asCurrency(order.currency))
         bold(true); big()
-        columns("TOTAL", order.totalCents.asCurrency())
+        columns("TOTAL", order.total.asCurrency(order.currency))
         normal(); bold(false)
     }
 
     private fun footer(order: Order) {
         svc.printText("\n", null)
         center()
-        svc.printText("Prep target: ${order.prepMinutes} min\n", null)
         svc.printText("Thank you!\n", null)
         left()
     }
@@ -103,8 +97,6 @@ internal class ReceiptFormatter(private val svc: SunmiPrinterService) {
     private fun bold(on: Boolean) = svc.sendRAWData(if (on) ESC_BOLD_ON else ESC_BOLD_OFF, null)
     private fun normal() = svc.setFontSize(24f, null)
     private fun big() = svc.setFontSize(32f, null)
-
-    private fun OrderType.label() = if (this == OrderType.DELIVERY) "DELIVERY" else "PICKUP"
 
     companion object {
         private const val WIDTH = 32

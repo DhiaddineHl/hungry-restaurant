@@ -1,76 +1,77 @@
 package com.hungry.restaurant.pos.data.model
 
 /**
- * A single delivery/pickup order surfaced from one of the delivery platforms.
+ * An order placed through Hungry's own customer app - the only source of
+ * orders this backend models (no multi-marketplace aggregation: an earlier
+ * version of this screen showed Uber Eats/DoorDash/etc. chips, which had no
+ * backing data anywhere and were dropped when this was wired to the real API).
  *
- * Money values are stored in whole cents to avoid floating-point rounding on
- * receipts and totals. Use [asCurrency] for display.
+ * Money fields are the exact amounts `OrderOutputData` computed server-side
+ * (the same figures a receipt bills), never recomputed on-device.
  */
 data class Order(
     val id: String,
-    /** Short human code shown on tickets, e.g. "A23". */
-    val shortCode: String,
-    val platform: DeliveryPlatform,
-    val type: OrderType,
+    /** Short human code shown on tickets, e.g. "ORD-0231". */
+    val code: String,
     val status: OrderStatus,
     val customerName: String,
+    val dropoffAddress: String?,
+    /** Special instructions / allergy note the customer left at checkout. */
+    val comment: String?,
     val items: List<OrderItem>,
+    val subtotal: Double,
+    val discountTotal: Double,
+    val deliveryFee: Double,
+    val serviceFee: Double,
+    val additionalFees: Double,
+    val total: Double,
+    val currency: String?,
     val placedAtMillis: Long,
-    /** Promised ready/handover time, minutes from [placedAtMillis]. */
-    val prepMinutes: Int,
-    val deliveryFeeCents: Int = 0,
-    val taxCents: Int = 0,
-    val tipCents: Int = 0,
-    val courierName: String? = null,
-    val deliveryAddress: String? = null,
-    val customerNote: String? = null,
+    val confirmedAtMillis: Long?,
+    val preparingAtMillis: Long?,
+    val readyAtMillis: Long?,
+    val finishedAtMillis: Long?,
+    val cancelledAtMillis: Long?,
+    val cancelReason: String?,
 ) {
-    val subtotalCents: Int get() = items.sumOf { it.lineTotalCents }
-    val totalCents: Int get() = subtotalCents + taxCents + deliveryFeeCents + tipCents
     val itemCount: Int get() = items.sumOf { it.quantity }
 }
 
 data class OrderItem(
     val name: String,
     val quantity: Int,
-    val unitPriceCents: Int,
-    /** Selected options / add-ons, e.g. "No onions", "Extra cheese (+$1.50)". */
+    val unitPrice: Double,
+    val lineTotal: Double,
+    /** Selected options / add-ons, e.g. "No onions", "Extra cheese". */
     val modifiers: List<String> = emptyList(),
-    val note: String? = null,
-) {
-    val lineTotalCents: Int get() = unitPriceCents * quantity
-}
+)
 
-enum class OrderType { DELIVERY, PICKUP }
-
+/** Mirrors the backend's `OrderStatus` enum exactly - names must match its JSON values. */
 enum class OrderStatus {
-    /** Just arrived, awaiting the restaurant to accept. */
-    NEW,
+    /** Just placed, awaiting the restaurant to accept or reject it. */
+    CREATED,
+
+    /** Accepted; about to move to PREPARING (this app calls prepare() right after confirm()). */
+    CONFIRMED,
+
+    /** Declined outright, before any preparation started. */
+    REJECTED,
 
     /** Accepted and being cooked. */
     PREPARING,
 
-    /** Cooked and waiting for the courier / customer. */
+    /** Cooked and waiting for pickup/handover. */
     READY,
 
-    /** Handed to courier / customer; done from the kitchen's side. */
-    COMPLETED,
+    /** Handed off; done from the kitchen's side. */
+    FINISHED,
 
+    /** Called off after being accepted. */
     CANCELLED;
 
-    /** Orders the kitchen is actively working — drives the "Active Orders" screen. */
-    val isActive: Boolean get() = this == NEW || this == PREPARING || this == READY
-}
+    /** Orders the kitchen is actively working - drives the Active Orders board. */
+    val isActive: Boolean get() = this == CREATED || this == CONFIRMED || this == PREPARING || this == READY
 
-/**
- * Delivery marketplaces the restaurant receives orders from. [brandHex] is used
- * by the UI layer to tint the platform chip so staff recognize the source fast.
- */
-enum class DeliveryPlatform(val displayName: String, val brandHex: Long) {
-    UBER_EATS("Uber Eats", 0xFF06C167),
-    DOORDASH("DoorDash", 0xFFFF3008),
-    GRUBHUB("Grubhub", 0xFFF63440),
-    DELIVEROO("Deliveroo", 0xFF00CCBC),
-    JUST_EAT("Just Eat", 0xFFFF8000),
-    IN_HOUSE("Hungry Direct", 0xFFFF5A1F),
+    /** Terminal, past orders - drives the History screen. */
+    val isPast: Boolean get() = this == FINISHED || this == REJECTED || this == CANCELLED
 }

@@ -14,6 +14,9 @@ sunmiPrinterLibrary = "1.0.23"
 openidAppAuth = "0.11.1"
 securityCrypto = "1.1.0-beta01"
 androidxBrowser = "1.8.0"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
+retrofitKotlinxSerialization = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +40,10 @@ sunmi-printerlibrary = { group = "com.sunmi", name = "printerlibrary", version.r
 openid-app-auth = {group = "net.openid", name = "appauth", version.ref = "openidAppAuth"}
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidxBrowser" }
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofitKotlinxSerialization" }
+okhttp-core = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

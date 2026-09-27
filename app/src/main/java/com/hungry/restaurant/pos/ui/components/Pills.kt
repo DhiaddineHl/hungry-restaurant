@@ -2,7 +2,6 @@ package com.hungry.restaurant.pos.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.hungry.restaurant.pos.data.model.DeliveryPlatform
 
 /** A colored status chip (New / Preparing / Ready / …). */
 @Composable
@@ -47,23 +45,4 @@ fun StatusPill(
             modifier = Modifier.padding(start = 6.dp),
         )
     }
-}
-
-/** Delivery platform tag tinted with the platform's brand color. */
-@Composable
-fun PlatformChip(
-    platform: DeliveryPlatform,
-    modifier: Modifier = Modifier,
-) {
-    val brand = Color(platform.brandHex)
-    Text(
-        text = platform.displayName,
-        style = MaterialTheme.typography.labelMedium,
-        color = brand,
-        fontWeight = FontWeight.SemiBold,
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(brand.copy(alpha = 0.12f))
-            .padding(PaddingValues(horizontal = 8.dp, vertical = 4.dp)),
-    )
 }

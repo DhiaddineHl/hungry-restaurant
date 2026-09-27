@@ -20,7 +20,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Print
-import androidx.compose.material.icons.outlined.TwoWheeler
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,9 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hungry.restaurant.pos.data.model.Order
 import com.hungry.restaurant.pos.data.model.OrderItem
-import com.hungry.restaurant.pos.data.model.OrderType
+import com.hungry.restaurant.pos.data.model.OrderStatus
 import com.hungry.restaurant.pos.data.model.asCurrency
-import com.hungry.restaurant.pos.ui.components.PlatformChip
 import com.hungry.restaurant.pos.ui.components.StatusPill
 import com.hungry.restaurant.pos.ui.util.dateTime
 import com.hungry.restaurant.pos.ui.util.visual
@@ -60,7 +59,7 @@ fun OrderDetailsScreen(
 ) {
     val order by viewModel.order.collectAsStateWithLifecycle()
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         viewModel.messages.collect { onMessage(it) }
     }
 
@@ -68,7 +67,7 @@ fun OrderDetailsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(order?.let { "Order #${it.shortCode}" } ?: "Order") },
+                title = { Text(order?.let { "Order #${it.code}" } ?: "Order") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
@@ -111,7 +110,8 @@ fun OrderDetailsScreen(
             CustomerCard(current)
             ItemsCard(current)
             TotalsCard(current)
-            current.customerNote?.takeIf { it.isNotBlank() }?.let { NoteCard(it) }
+            current.comment?.takeIf { it.isNotBlank() }?.let { NoteCard(it) }
+            current.cancelReason?.takeIf { it.isNotBlank() }?.let { NoteCard("Cancelled: $it") }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -127,18 +127,8 @@ private fun StatusHeader(order: Order) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    PlatformChip(order.platform)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (order.type == OrderType.DELIVERY) "Delivery" else "Pickup",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    "#${order.shortCode}",
+                    "#${order.code}",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -157,15 +147,9 @@ private fun StatusHeader(order: Order) {
 private fun CustomerCard(order: Order) {
     Card {
         InfoRow(Icons.Outlined.Person, "Customer", order.customerName)
-        if (order.type == OrderType.DELIVERY) {
-            order.deliveryAddress?.let {
-                Spacer(Modifier.height(12.dp))
-                InfoRow(Icons.Outlined.LocationOn, "Address", it)
-            }
-            order.courierName?.let {
-                Spacer(Modifier.height(12.dp))
-                InfoRow(Icons.Outlined.TwoWheeler, "Courier", it)
-            }
+        order.dropoffAddress?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(12.dp))
+            InfoRow(Icons.Outlined.LocationOn, "Address", it)
         }
     }
 }
@@ -197,7 +181,7 @@ private fun ItemsCard(order: Order) {
         )
         Spacer(Modifier.height(8.dp))
         order.items.forEachIndexed { index, item ->
-            ItemRow(item)
+            ItemRow(item, order.currency)
             if (index != order.items.lastIndex) {
                 Spacer(Modifier.height(10.dp))
             }
@@ -206,7 +190,7 @@ private fun ItemsCard(order: Order) {
 }
 
 @Composable
-private fun ItemRow(item: OrderItem) {
+private fun ItemRow(item: OrderItem, currency: String?) {
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Row(Modifier.weight(1f)) {
@@ -224,7 +208,7 @@ private fun ItemRow(item: OrderItem) {
                 )
             }
             Text(
-                item.lineTotalCents.asCurrency(),
+                item.lineTotal.asCurrency(currency),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
@@ -238,29 +222,22 @@ private fun ItemRow(item: OrderItem) {
                 modifier = Modifier.padding(start = 26.dp, top = 2.dp),
             )
         }
-        item.note?.takeIf { it.isNotBlank() }?.let {
-            Text(
-                "Note: $it",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 26.dp, top = 2.dp),
-            )
-        }
     }
 }
 
 @Composable
 private fun TotalsCard(order: Order) {
     Card {
-        TotalRow("Subtotal", order.subtotalCents.asCurrency())
-        if (order.taxCents > 0) TotalRow("Tax", order.taxCents.asCurrency())
-        if (order.deliveryFeeCents > 0) TotalRow("Delivery fee", order.deliveryFeeCents.asCurrency())
-        if (order.tipCents > 0) TotalRow("Tip", order.tipCents.asCurrency())
+        TotalRow("Subtotal", order.subtotal.asCurrency(order.currency))
+        if (order.discountTotal > 0) TotalRow("Discount", "-${order.discountTotal.asCurrency(order.currency)}")
+        if (order.deliveryFee > 0) TotalRow("Delivery fee", order.deliveryFee.asCurrency(order.currency))
+        if (order.serviceFee > 0) TotalRow("Service fee", order.serviceFee.asCurrency(order.currency))
+        if (order.additionalFees > 0) TotalRow("Additional fees", order.additionalFees.asCurrency(order.currency))
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Total", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Text(
-                order.totalCents.asCurrency(),
+                order.total.asCurrency(order.currency),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -291,7 +268,7 @@ private fun NoteCard(note: String) {
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(
-                "Customer note",
+                "Note",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 fontWeight = FontWeight.SemiBold,
@@ -308,7 +285,6 @@ private fun NoteCard(note: String) {
 
 @Composable
 private fun ActionBar(order: Order, viewModel: OrderDetailsViewModel) {
-    val advanceLabel = order.status.visual().advanceLabel
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -321,23 +297,28 @@ private fun ActionBar(order: Order, viewModel: OrderDetailsViewModel) {
                     Spacer(Modifier.width(8.dp))
                     Text("Print")
                 }
-                if (advanceLabel != null) {
-                    Button(
-                        onClick = { viewModel.advance() },
+                when (order.status) {
+                    OrderStatus.CREATED -> Button(
+                        onClick = { viewModel.accept() },
                         shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
-                    ) {
-                        Text(advanceLabel, style = MaterialTheme.typography.titleMedium)
-                    }
+                        modifier = Modifier.weight(1f).height(52.dp),
+                    ) { Text("Accept", style = MaterialTheme.typography.titleMedium) }
+
+                    OrderStatus.CONFIRMED, OrderStatus.PREPARING -> Button(
+                        onClick = { viewModel.markReady() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(52.dp),
+                    ) { Text("Mark as ready", style = MaterialTheme.typography.titleMedium) }
+
+                    else -> {}
                 }
             }
-            if (order.status.isActive) {
-                TextButton(
-                    onClick = { viewModel.cancel() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
+            if (order.status == OrderStatus.CREATED) {
+                TextButton(onClick = { viewModel.reject() }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Reject order", color = MaterialTheme.colorScheme.error)
+                }
+            } else if (order.status.isActive) {
+                TextButton(onClick = { viewModel.cancel() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Cancel order", color = MaterialTheme.colorScheme.error)
                 }
             }
