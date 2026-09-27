@@ -84,9 +84,13 @@ class LoginViewModel(
             } catch (e: AuthException) {
                 Log.e(TAG, "Sign-in failed", e)
                 _uiState.value = LoginUiState.Error(e.message ?: "Sign-in failed")
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Deliberately Throwable, not Exception: on some devices a missing/odd
+                // Custom Tabs or WebView provider surfaces as a Error subtype
+                // (e.g. NoClassDefFoundError), which `catch (e: Exception)` would let
+                // through and crash the app instead of showing this screen's error state.
                 Log.e(TAG, "Unexpected sign-in failure", e)
-                _uiState.value = LoginUiState.Error("Sign-in failed. Please try again.")
+                _uiState.value = LoginUiState.Error(e.message ?: "Sign-in failed. Please try again.")
             }
         }
     }

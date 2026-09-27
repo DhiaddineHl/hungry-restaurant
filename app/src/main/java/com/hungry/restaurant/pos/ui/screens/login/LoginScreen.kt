@@ -131,7 +131,12 @@ fun LoginScreen(
                             scope.launch {
                                 try {
                                     authLauncher.launch(viewModel.buildAuthorizationIntent())
-                                } catch (e: Exception) {
+                                } catch (e: Throwable) {
+                                    // Throwable, not Exception: a missing/broken Custom Tabs
+                                    // or WebView provider on this device can surface as an
+                                    // Error subtype (e.g. NoClassDefFoundError), which would
+                                    // otherwise slip past this catch and crash the app.
+                                    android.util.Log.e("LoginScreen", "Could not start sign-in", e)
                                     Toast.makeText(
                                         context,
                                         e.message ?: "Could not start sign-in",

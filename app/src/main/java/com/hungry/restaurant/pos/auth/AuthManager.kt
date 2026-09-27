@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
+import com.hungry.restaurant.pos.BuildConfig
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
@@ -36,7 +38,19 @@ class AuthManager(
     private val storage: EncryptedAuthStateStorage,
 ) {
     private val appContext = context.applicationContext
-    private val authService = AuthorizationService(appContext)
+
+    // DevConnectionBuilder, not AppAuth's default: the default hard-refuses any non-https
+    // issuer, which crashes (uncaught, off the coroutine call stack) against a plain-http
+    // local/LAN Keycloak. See its kdoc. setSkipIssuerHttpsCheck is the second half of the
+    // same relaxation - without it, AppAuth still rejects the ID token's "iss" claim
+    // (net.openid.appauth.IdToken) for being http, after a successful token exchange.
+    private val authService = AuthorizationService(
+        appContext,
+        AppAuthConfiguration.Builder()
+            .setConnectionBuilder(DevConnectionBuilder)
+            .setSkipIssuerHttpsCheck(BuildConfig.DEBUG)
+            .build(),
+    )
 
     private val discoveryMutex = Mutex()
     private var cachedServiceConfig: AuthorizationServiceConfiguration? = null
@@ -146,12 +160,16 @@ class AuthManager(
 
     private suspend fun fetchDiscovery(): AuthorizationServiceConfiguration =
         suspendCancellableCoroutine { cont ->
-            AuthorizationServiceConfiguration.fetchFromIssuer(Uri.parse(KeycloakConfig.ISSUER)) { config, ex ->
-                when {
-                    config != null -> cont.resume(config)
-                    else -> cont.resumeWithException(AuthException.DiscoveryFailed(ex))
-                }
-            }
+            AuthorizationServiceConfiguration.fetchFromIssuer(
+                Uri.parse(KeycloakConfig.ISSUER),
+                { config, ex ->
+                    when {
+                        config != null -> cont.resume(config)
+                        else -> cont.resumeWithException(AuthException.DiscoveryFailed(ex))
+                    }
+                },
+                DevConnectionBuilder,
+            )
         }
 
     private suspend fun exchangeCode(response: AuthorizationResponse): TokenResponse =
