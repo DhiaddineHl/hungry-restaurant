@@ -13,10 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
@@ -38,7 +36,6 @@ import com.hungry.restaurant.pos.ui.screens.incoming.IncomingOrderAlertScreen
 import com.hungry.restaurant.pos.ui.screens.login.LoginScreen
 import com.hungry.restaurant.pos.ui.screens.menu.MenuScreen
 import com.hungry.restaurant.pos.ui.screens.settings.SettingsScreen
-import com.hungry.restaurant.pos.ui.screens.staffpicker.StaffPickerScreen
 import com.hungry.restaurant.pos.ui.screens.stats.StatsScreen
 import kotlinx.coroutines.launch
 
@@ -58,19 +55,15 @@ fun AppNavigation() {
     val showBottomBar = TopLevelDestination.entries.any { it.route == currentRoute }
 
     // The full-screen "New order" interrupt (screen 03) - queued so a second order
-    // arriving while one is still on screen doesn't get lost, just counted.
+    // arriving while one is still on screen doesn't get lost, just counted. Harmless
+    // to collect before sign-in: polling (and therefore this) never emits until
+    // LoginViewModel starts it on a successful sign-in.
     val pendingAlerts = remember { mutableStateListOf<Order>() }
-    var staffSignedIn by remember { mutableStateOf(app.container.currentShift.currentStaff.value != null) }
     val posSettings by app.container.posSettingsRepository.settings.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        app.container.currentShift.currentStaff.collect { staffSignedIn = it != null }
-    }
-    LaunchedEffect(staffSignedIn) {
-        if (staffSignedIn) {
-            app.container.orderRepository.newOrderEvents.collect { order ->
-                pendingAlerts.add(order)
-            }
+        app.container.orderRepository.newOrderEvents.collect { order ->
+            pendingAlerts.add(order)
         }
     }
 
@@ -99,26 +92,10 @@ fun AppNavigation() {
             composable(Routes.LOGIN) {
                 LoginScreen(
                     onLoginSuccess = {
-                        navController.navigate(Routes.STAFF_PICKER) {
+                        navController.navigate(Routes.ACTIVE) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
                         }
                     },
-                )
-            }
-            composable(Routes.STAFF_PICKER) {
-                StaffPickerScreen(
-                    onSignedIn = {
-                        navController.navigate(Routes.ACTIVE) {
-                            popUpTo(Routes.STAFF_PICKER) { inclusive = true }
-                        }
-                    },
-                    onManagerLogin = {
-                        app.container.authManager.clearSession()
-                        navController.navigate(Routes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
-                    onMessage = onMessage,
                 )
             }
             composable(Routes.ACTIVE) {
@@ -151,12 +128,6 @@ fun AppNavigation() {
                 AccountScreen(
                     contentPadding = padding,
                     onBack = { navController.popBackStack() },
-                    onSwitchStaff = {
-                        app.container.currentShift.signOut()
-                        navController.navigate(Routes.STAFF_PICKER) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
                     onLoggedOut = {
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }

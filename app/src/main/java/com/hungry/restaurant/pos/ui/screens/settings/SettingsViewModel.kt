@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hungry.restaurant.pos.HungryPosApp
+import com.hungry.restaurant.pos.auth.AuthManager
+import com.hungry.restaurant.pos.auth.AuthUser
 import com.hungry.restaurant.pos.data.model.PosSettings
-import com.hungry.restaurant.pos.data.model.StaffMember
-import com.hungry.restaurant.pos.data.repository.CurrentShiftRepository
 import com.hungry.restaurant.pos.data.repository.PosSettingsRepository
 import com.hungry.restaurant.pos.printer.SunmiPrinter
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,12 +17,12 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: PosSettingsRepository,
-    private val currentShift: CurrentShiftRepository,
+    authManager: AuthManager,
     val printer: SunmiPrinter,
 ) : ViewModel() {
 
     val settings: StateFlow<PosSettings?> = settingsRepository.settings
-    val currentStaff: StateFlow<StaffMember?> = currentShift.currentStaff
+    val authUser: StateFlow<AuthUser?> = authManager.authUser
     val printerStatus: StateFlow<SunmiPrinter.Status> = printer.status
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
@@ -58,7 +58,7 @@ class SettingsViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as HungryPosApp
-                SettingsViewModel(app.container.posSettingsRepository, app.container.currentShift, app.container.sunmiPrinter)
+                SettingsViewModel(app.container.posSettingsRepository, app.container.authManager, app.container.sunmiPrinter)
             }
         }
     }

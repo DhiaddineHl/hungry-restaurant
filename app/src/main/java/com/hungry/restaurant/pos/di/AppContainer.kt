@@ -5,7 +5,6 @@ import com.hungry.restaurant.pos.auth.AuthManager
 import com.hungry.restaurant.pos.auth.EncryptedAuthStateStorage
 import com.hungry.restaurant.pos.data.network.ApiClient
 import com.hungry.restaurant.pos.data.network.RestaurantPosApi
-import com.hungry.restaurant.pos.data.repository.CurrentShiftRepository
 import com.hungry.restaurant.pos.data.repository.MenuRepository
 import com.hungry.restaurant.pos.data.repository.OrderHistoryRepository
 import com.hungry.restaurant.pos.data.repository.OrderRepository
@@ -15,10 +14,8 @@ import com.hungry.restaurant.pos.data.repository.RealOrderHistoryRepository
 import com.hungry.restaurant.pos.data.repository.RealOrderRepository
 import com.hungry.restaurant.pos.data.repository.RealPosSettingsRepository
 import com.hungry.restaurant.pos.data.repository.RealRestaurantSessionRepository
-import com.hungry.restaurant.pos.data.repository.RealStaffRepository
 import com.hungry.restaurant.pos.data.repository.RealStatsRepository
 import com.hungry.restaurant.pos.data.repository.RestaurantSessionRepository
-import com.hungry.restaurant.pos.data.repository.StaffRepository
 import com.hungry.restaurant.pos.data.repository.StatsRepository
 import com.hungry.restaurant.pos.printer.SunmiPrinter
 
@@ -27,6 +24,10 @@ import com.hungry.restaurant.pos.printer.SunmiPrinter
  * in [com.hungry.restaurant.pos.HungryPosApp]. Every repository here talks to
  * the real backend through the single [RestaurantPosApi] instance - nothing in
  * this container is a mock any more.
+ *
+ * <p>No staff/shift concept - one Keycloak account is the restaurant's only
+ * identity (see [AuthManager]); a successful sign-in goes straight to the
+ * main pages.
  */
 class AppContainer(context: Context) {
     val authManager: AuthManager = AuthManager(context, EncryptedAuthStateStorage(context))
@@ -34,8 +35,6 @@ class AppContainer(context: Context) {
     private val api: RestaurantPosApi = ApiClient.create(authManager)
 
     val restaurantSession: RestaurantSessionRepository = RealRestaurantSessionRepository(api)
-    val currentShift: CurrentShiftRepository = CurrentShiftRepository()
-    val staffRepository: StaffRepository = RealStaffRepository(api)
 
     private val realOrderRepository = RealOrderRepository(api)
     val orderRepository: OrderRepository = realOrderRepository

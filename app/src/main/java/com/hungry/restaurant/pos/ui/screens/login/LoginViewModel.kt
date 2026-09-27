@@ -14,6 +14,8 @@ import com.hungry.restaurant.pos.auth.AuthException
 import com.hungry.restaurant.pos.auth.AuthManager
 import com.hungry.restaurant.pos.auth.AuthUser
 import com.hungry.restaurant.pos.auth.KeycloakConfig
+import com.hungry.restaurant.pos.data.repository.RestaurantSessionRepository
+import com.hungry.restaurant.pos.di.AppContainer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,16 +29,35 @@ sealed interface LoginUiState {
     data class Error(val message: String) : LoginUiState
 }
 
-class LoginViewModel(private val authManager: AuthManager) : ViewModel() {
+/**
+ * No staff/PIN picker any more - a successful Keycloak sign-in (real or a
+ * still-valid cached session from a previous launch) resolves the caller's
+ * restaurant ([RestaurantSessionRepository.refresh]) and, once that succeeds,
+ * goes straight to [LoginUiState.Authenticated] - the main pages. A session
+ * that authenticates locally but can't actually reach the backend (e.g. one
+ * cached from a since-changed Keycloak instance) is treated as unusable and
+ * cleared, the same way the removed staff-picker screen used to bounce back.
+ */
+class LoginViewModel(
+    private val authManager: AuthManager,
+    private val sessionRepository: RestaurantSessionRepository,
+    private val appContainer: AppContainer,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    init {
+        if (_uiState.value is LoginUiState.Authenticating) {
+            viewModelScope.launch { resolveSessionThenAuthenticate() }
+        }
+    }
 
     /** A persisted session from a previous launch may already satisfy the role requirement. */
     private fun initialState(): LoginUiState {
         val user = authManager.authUser.value
         return if (user != null && user.hasRole(KeycloakConfig.REQUIRED_ROLE)) {
-            LoginUiState.Authenticated
+            LoginUiState.Authenticating
         } else {
             LoginUiState.SignedOut
         }
@@ -53,7 +74,13 @@ class LoginViewModel(private val authManager: AuthManager) : ViewModel() {
                     throw AuthException.UserCancelled()
                 }
                 val user = authManager.handleAuthorizationResponse(data)
-                _uiState.value = evaluateRole(user)
+                if (!user.hasRole(KeycloakConfig.REQUIRED_ROLE)) {
+                    Log.w(TAG, "${user.email ?: user.subject} is missing required role ${KeycloakConfig.REQUIRED_ROLE}")
+                    authManager.clearSession()
+                    _uiState.value = LoginUiState.AccessDenied(user.email)
+                    return@launch
+                }
+                resolveSessionThenAuthenticate()
             } catch (e: AuthException) {
                 Log.e(TAG, "Sign-in failed", e)
                 _uiState.value = LoginUiState.Error(e.message ?: "Sign-in failed")
@@ -68,13 +95,21 @@ class LoginViewModel(private val authManager: AuthManager) : ViewModel() {
         _uiState.value = LoginUiState.SignedOut
     }
 
-    private fun evaluateRole(user: AuthUser): LoginUiState {
-        if (!user.hasRole(KeycloakConfig.REQUIRED_ROLE)) {
-            Log.w(TAG, "${user.email ?: user.subject} is missing required role ${KeycloakConfig.REQUIRED_ROLE}")
+    /**
+     * The step that used to be the staff picker's job: prove the session
+     * actually works against this backend before calling it "authenticated",
+     * and start the order-board polling that used to kick off there too.
+     */
+    private suspend fun resolveSessionThenAuthenticate() {
+        val resolved = sessionRepository.refresh()
+        if (resolved.isFailure) {
+            Log.e(TAG, "Signed in with Keycloak but couldn't resolve the restaurant", resolved.exceptionOrNull())
             authManager.clearSession()
-            return LoginUiState.AccessDenied(user.email)
+            _uiState.value = LoginUiState.Error("Couldn't reach the restaurant backend. Please try again.")
+            return
         }
-        return LoginUiState.Authenticated
+        appContainer.startOrderPolling()
+        _uiState.value = LoginUiState.Authenticated
     }
 
     companion object {
@@ -83,7 +118,7 @@ class LoginViewModel(private val authManager: AuthManager) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as HungryPosApp
-                LoginViewModel(app.container.authManager)
+                LoginViewModel(app.container.authManager, app.container.restaurantSession, app.container)
             }
         }
     }

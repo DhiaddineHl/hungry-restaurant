@@ -7,14 +7,9 @@ import com.hungry.restaurant.pos.data.network.dto.PageDto
 import com.hungry.restaurant.pos.data.network.dto.PosSettingsDto
 import com.hungry.restaurant.pos.data.network.dto.ProductDto
 import com.hungry.restaurant.pos.data.network.dto.RestaurantDto
-import com.hungry.restaurant.pos.data.network.dto.StaffDto
 import com.hungry.restaurant.pos.data.network.dto.StatsDto
 import com.hungry.restaurant.pos.data.network.dto.UpdatePosSettingsRequestDto
-import com.hungry.restaurant.pos.data.network.dto.UpsertStaffRequestDto
-import com.hungry.restaurant.pos.data.network.dto.VerifyPinRequestDto
-import retrofit2.Response
 import retrofit2.http.Body
-import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -68,22 +63,6 @@ interface RestaurantPosApi {
 
     @PATCH("restaurants/me/menu/{id}/availability")
     suspend fun setAvailability(@Path("id") id: String, @Body body: AvailabilityRequestDto): ProductDto
-
-    @GET("restaurants/me/staff")
-    suspend fun listStaff(): List<StaffDto>
-
-    @POST("restaurants/me/staff")
-    suspend fun createStaff(@Body body: UpsertStaffRequestDto): StaffDto
-
-    @PUT("restaurants/me/staff/{id}")
-    suspend fun updateStaff(@Path("id") id: String, @Body body: UpsertStaffRequestDto): StaffDto
-
-    @DELETE("restaurants/me/staff/{id}")
-    suspend fun deactivateStaff(@Path("id") id: String)
-
-    /** [Response] rather than a plain return type: a wrong PIN is an ordinary 401, not an error to throw on. */
-    @POST("restaurants/me/staff/{id}/verify-pin")
-    suspend fun verifyPin(@Path("id") id: String, @Body body: VerifyPinRequestDto): Response<StaffDto>
 
     @GET("restaurants/me/pos-settings")
     suspend fun getPosSettings(): PosSettingsDto

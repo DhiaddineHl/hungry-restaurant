@@ -9,11 +9,8 @@ import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object Routes {
-    /** Manager sign-in (Keycloak) - the device-pairing step, not the everyday one. */
+    /** Keycloak sign-in - the only entry point. Success goes straight to [ACTIVE]. */
     const val LOGIN = "login"
-
-    /** The "who's on shift?" PIN picker - the everyday entry point once a device is paired. */
-    const val STAFF_PICKER = "staff_picker"
 
     const val ACTIVE = "active"
     const val HISTORY = "history"

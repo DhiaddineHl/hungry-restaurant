@@ -47,7 +47,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val staff by viewModel.currentStaff.collectAsStateWithLifecycle()
+    val user by viewModel.authUser.collectAsStateWithLifecycle()
     val printerStatus by viewModel.printerStatus.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -71,7 +71,7 @@ fun SettingsScreen(
         }
 
         item {
-            ProfileRow(name = staff?.name ?: "Account", role = staff?.role?.name ?: "", onClick = onOpenAccount)
+            ProfileRow(name = user?.displayName ?: user?.email ?: "Account", role = "", onClick = onOpenAccount)
         }
 
         item {

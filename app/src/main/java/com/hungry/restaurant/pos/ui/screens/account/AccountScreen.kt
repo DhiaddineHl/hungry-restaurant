@@ -26,7 +26,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ManageAccounts
-import androidx.compose.material.icons.outlined.SwitchAccount
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,6 @@ import kotlinx.coroutines.launch
 fun AccountScreen(
     contentPadding: PaddingValues,
     onBack: () -> Unit,
-    onSwitchStaff: () -> Unit,
     onLoggedOut: () -> Unit,
     viewModel: AccountViewModel = viewModel(factory = AccountViewModel.Factory),
 ) {
@@ -158,7 +156,6 @@ fun AccountScreen(
                 .clip(RoundedCornerShape(16.dp))
                 .background(MaterialTheme.colorScheme.surface),
         ) {
-            AccountListRow(Icons.Outlined.SwitchAccount, "Switch staff", onSwitchStaff)
             AccountListRow(Icons.Outlined.ManageAccounts, "Manage account") {
                 context.startActivity(viewModel.buildManageAccountIntent())
             }
@@ -172,7 +169,7 @@ fun AccountScreen(
         ) {
             Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = NegativeRed, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("End shift & log out", color = NegativeRed)
+            Text("Log out", color = NegativeRed)
         }
     }
 }

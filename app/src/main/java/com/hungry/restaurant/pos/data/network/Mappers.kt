@@ -6,19 +6,16 @@ import com.hungry.restaurant.pos.data.model.OrderItem
 import com.hungry.restaurant.pos.data.model.OrderStatus
 import com.hungry.restaurant.pos.data.model.PosSettings
 import com.hungry.restaurant.pos.data.model.RestaurantProfile
-import com.hungry.restaurant.pos.data.model.StaffMember
 import com.hungry.restaurant.pos.data.model.StatsPeriod
 import com.hungry.restaurant.pos.data.model.StatsSummary
 import com.hungry.restaurant.pos.data.model.TopSellingItem
 import com.hungry.restaurant.pos.data.model.orNow
 import com.hungry.restaurant.pos.data.model.parseLocalDateTimeMillis
-import com.hungry.restaurant.pos.data.model.toStaffRole
 import com.hungry.restaurant.pos.data.network.dto.OrderDto
 import com.hungry.restaurant.pos.data.network.dto.OrderItemDto
 import com.hungry.restaurant.pos.data.network.dto.PosSettingsDto
 import com.hungry.restaurant.pos.data.network.dto.ProductDto
 import com.hungry.restaurant.pos.data.network.dto.RestaurantDto
-import com.hungry.restaurant.pos.data.network.dto.StaffDto
 import com.hungry.restaurant.pos.data.network.dto.StatsDto
 
 fun OrderDto.toDomain(): Order = Order(
@@ -73,13 +70,6 @@ fun ProductDto.toDomain(): MenuItem = MenuItem(
     available = available,
     unavailableReason = unavailableReason,
     prepTimeMinutes = prepTimeMinutes,
-)
-
-fun StaffDto.toDomain(): StaffMember = StaffMember(
-    id = id,
-    name = name,
-    initials = initials,
-    role = role.toStaffRole(),
 )
 
 fun PosSettingsDto.toDomain(): PosSettings = PosSettings(
