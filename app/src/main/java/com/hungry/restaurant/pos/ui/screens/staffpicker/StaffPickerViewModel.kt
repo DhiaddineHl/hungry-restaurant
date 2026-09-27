@@ -62,9 +62,25 @@ class StaffPickerViewModel(
     /** Emits once a PIN check succeeds - the screen navigates to the orders board. */
     val signedIn = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    /**
+     * Emits when the cached Keycloak session turns out to be unusable against
+     * this backend - e.g. a session cached from a previous Keycloak instance
+     * (a different issuer/signing keys) that [com.hungry.restaurant.pos.auth.AuthManager]
+     * still considers "authenticated" locally, so this screen was reached at
+     * all, but every API call with it fails. Previously this just left the
+     * picker permanently empty with no explanation; now it clears the stale
+     * session and the screen bounces back to a real sign-in.
+     */
+    val sessionInvalid = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     init {
         viewModelScope.launch {
-            sessionRepository.refresh()
+            val resolved = sessionRepository.refresh()
+            if (resolved.isFailure) {
+                appContainer.authManager.clearSession()
+                sessionInvalid.tryEmit(Unit)
+                return@launch
+            }
             appContainer.startOrderPolling()
             staffRepository.refresh()
             _loading.value = false

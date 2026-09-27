@@ -57,6 +57,9 @@ fun StaffPickerScreen(
     LaunchedEffect(Unit) {
         viewModel.signedIn.collect { onSignedIn() }
     }
+    LaunchedEffect(Unit) {
+        viewModel.sessionInvalid.collect { onManagerLogin() }
+    }
 
     Column(
         modifier = Modifier
