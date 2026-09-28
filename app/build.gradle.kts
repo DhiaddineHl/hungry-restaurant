@@ -31,7 +31,7 @@ android {
         // with `-PapiBaseUrl=https://...` (e.g. a deployed gateway) without editing source;
         // this default will need updating again if the dev machine's IP changes (DHCP).
         val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
-            ?: "http://192.168.95.214:8082/"
+            ?: "http://172.20.10.3:8082/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         // Keycloak, reached DIRECTLY (not through the gateway - same reasoning as the
@@ -40,7 +40,7 @@ android {
         // on :8081. Override with `-PkeycloakBaseUrl=https://...` for a deployed Keycloak
         // without editing source.
         val keycloakBaseUrl = (project.findProperty("keycloakBaseUrl") as String?)
-            ?: "http://192.168.95.214:8081"
+            ?: "http://172.20.10.3:8081"
         buildConfigField("String", "KEYCLOAK_BASE_URL", "\"$keycloakBaseUrl\"")
     }
 
