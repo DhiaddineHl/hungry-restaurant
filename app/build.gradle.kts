@@ -25,22 +25,22 @@ android {
         // Keycloak client's registered redirect URI.
         manifestPlaceholders["appAuthRedirectScheme"] = "com.hungry.restaurant.pos"
 
-        // The hungry-app API gateway. Defaults to the same LAN convention the customer
-        // app's .env.example uses (EXPO_PUBLIC_API_URL) — a POS terminal on the
-        // restaurant's own network reaching the backend's docker-compose gateway on
-        // :8082. Override per-build with `-PapiBaseUrl=https://...` (e.g. a deployed
-        // gateway) without editing source.
+        // The hungry-app API gateway. Defaults to the dev machine's current LAN IP
+        // (192.168.95.214) that its docker-compose stack is actually reachable on — a
+        // POS terminal on the same Wi-Fi reaches the gateway on :8082. Override per-build
+        // with `-PapiBaseUrl=https://...` (e.g. a deployed gateway) without editing source;
+        // this default will need updating again if the dev machine's IP changes (DHCP).
         val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
-            ?: "http://192.168.1.100:8082/"
+            ?: "http://192.168.95.214:8082/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         // Keycloak, reached DIRECTLY (not through the gateway - same reasoning as the
         // customer app's EXPO_PUBLIC_KEYCLOAK_URL: the gateway only routes to hungry-app,
-        // so /realms/... isn't one of its routes). Defaults to the local docker-compose
-        // instance on :8081. Override with `-PkeycloakBaseUrl=https://...` for a deployed
-        // Keycloak without editing source.
+        // so /realms/... isn't one of its routes). Same dev-machine LAN IP as apiBaseUrl,
+        // on :8081. Override with `-PkeycloakBaseUrl=https://...` for a deployed Keycloak
+        // without editing source.
         val keycloakBaseUrl = (project.findProperty("keycloakBaseUrl") as String?)
-            ?: "http://192.168.1.100:8081"
+            ?: "http://192.168.95.214:8081"
         buildConfigField("String", "KEYCLOAK_BASE_URL", "\"$keycloakBaseUrl\"")
     }
 
