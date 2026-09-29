@@ -13,8 +13,14 @@ import kotlinx.coroutines.flow.StateFlow
  * nothing in this codebase or its sibling apps to verify the framing against,
  * and this app has no way to run/observe a build to catch a mistake there).
  */
+/** Screen E3 - whether the last poll reached the backend, and when one last succeeded. */
+data class ConnectionState(val isOnline: Boolean = true, val lastSyncMillis: Long? = null)
+
 interface OrderRepository {
     val orders: StateFlow<List<Order>>
+
+    /** Drives screen E3's Offline pill/banner - the board's own view of reachability, from polling. */
+    val connection: StateFlow<ConnectionState>
 
     /** Emits a CREATED order the moment a poll first sees it - drives the full-screen incoming-order alert. */
     val newOrderEvents: SharedFlow<Order>

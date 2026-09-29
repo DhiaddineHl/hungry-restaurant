@@ -2,7 +2,6 @@ package com.hungry.restaurant.pos.ui.screens.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,25 +9,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.Divider
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hungry.restaurant.pos.data.model.asCurrency
+import com.hungry.restaurant.pos.ui.components.EmptyState
 import com.hungry.restaurant.pos.ui.components.HistoryOrderRow
+import com.hungry.restaurant.pos.ui.components.HungryFilterChip
+import com.hungry.restaurant.pos.ui.components.ListCard
+import com.hungry.restaurant.pos.ui.components.ListCardDivider
+import com.hungry.restaurant.pos.ui.components.SearchField
+import com.hungry.restaurant.pos.ui.theme.Hungry
 
 @Composable
 fun OrderHistoryScreen(
@@ -36,85 +33,73 @@ fun OrderHistoryScreen(
     onOrderClick: (String) -> Unit,
     viewModel: OrderHistoryViewModel = viewModel(factory = OrderHistoryViewModel.Factory),
 ) {
+    val c = Hungry.colors
+    val type = Hungry.type
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize().background(c.canvas),
         contentPadding = PaddingValues(
-            top = contentPadding.calculateTopPadding() + 8.dp,
+            top = contentPadding.calculateTopPadding() + 12.dp,
             bottom = contentPadding.calculateBottomPadding() + 24.dp,
             start = 16.dp,
             end = 16.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item {
-            Text(
-                "History",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
+        item { Text("History", style = type.headline, color = c.ink) }
 
         item {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::setQuery,
-                placeholder = { Text("Order # or customer") },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth(),
-            )
+            SearchField(value = state.query, onValueChange = viewModel::setQuery, placeholder = "Order # or customer")
         }
 
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DateFilter.entries.forEach { filter ->
-                    FilterChip(
+                    HungryFilterChip(
+                        label = filter.label,
                         selected = state.dateFilter == filter,
                         onClick = { viewModel.setDateFilter(filter) },
-                        label = { Text(filter.label) },
-                        shape = RoundedCornerShape(50),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.onSurface,
-                            selectedLabelColor = MaterialTheme.colorScheme.surface,
-                        ),
                     )
                 }
             }
         }
 
-        item {
-            Text(
-                "${state.summaryCount} orders · ${state.summaryRevenue.asCurrency(state.summaryCurrency)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (state.visibleOrders.isNotEmpty() || state.loading) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${state.summaryCount} orders", style = type.body, color = c.inkMuted)
+                    Text(state.summaryRevenue.asCurrency(state.summaryCurrency), style = type.bodyStrong, color = c.ink)
+                }
+            }
         }
 
         if (!state.loading && state.visibleOrders.isEmpty()) {
             item {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        "No orders in this view yet.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                EmptyState(
+                    icon = Icons.Outlined.SearchOff,
+                    title = if (state.query.isBlank()) "No orders yet" else "No orders match \"${state.query}\"",
+                    body = "Try another order number or customer name, or widen the date range.",
+                    actionLabel = if (state.dateFilter != DateFilter.WEEK) "Search last 7 days" else null,
+                    onAction = { viewModel.setDateFilter(DateFilter.WEEK) },
+                    modifier = Modifier.padding(top = 40.dp),
+                )
             }
         }
 
-        items(state.visibleOrders, key = { it.id }) { order ->
-            HistoryOrderRow(order = order, onClick = { onOrderClick(order.id) })
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+        if (state.visibleOrders.isNotEmpty()) {
+            item {
+                ListCard {
+                    state.visibleOrders.forEachIndexed { index, order ->
+                        HistoryOrderRow(
+                            order = order,
+                            onClick = { onOrderClick(order.id) },
+                            modifier = Modifier.padding(horizontal = 14.dp),
+                        )
+                        if (index != state.visibleOrders.lastIndex) ListCardDivider()
+                    }
+                }
+            }
         }
     }
 }

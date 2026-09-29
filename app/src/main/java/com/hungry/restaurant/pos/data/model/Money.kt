@@ -6,15 +6,21 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Format an amount with its ISO currency code, e.g. `12.5` + `"TND"` -> "12.500 TND".
- * Tunisia's dinar (the platform's default currency) prints 3 decimals; anything else
- * gets the conventional 2 - matching `CurrencyContext.formatMoney`'s convention on the
- * admin dashboard rather than hardcoding a symbol this app has no reliable source for.
+ * Format an amount per the design system's money rule: a space as the thousands
+ * separator and, for Tunisia's dinar (the platform's default currency), 3 decimals
+ * and a "DT" suffix - e.g. `1248.5` + `"TND"` -> "1 248.500 DT". Any other currency
+ * falls back to its ISO code at 2 decimals. Pass [withSuffix] = false for list rows
+ * that omit the trailing unit, per the design system.
  */
-fun Double.asCurrency(currencyCode: String? = null): String {
-    val decimals = if (currencyCode.equalsIgnoreCase("TND")) 3 else 2
-    val amount = String.format(Locale.US, "%,.${decimals}f", this)
-    return if (currencyCode.isNullOrBlank()) amount else "$amount $currencyCode"
+fun Double.asCurrency(currencyCode: String? = null, withSuffix: Boolean = true): String {
+    val isTnd = currencyCode.equalsIgnoreCase("TND")
+    val decimals = if (isTnd) 3 else 2
+    val raw = String.format(Locale.US, "%,.${decimals}f", this)
+    // String.format with Locale.US groups with commas; the design system wants spaces.
+    val amount = raw.replace(",", " ")
+    if (!withSuffix) return amount
+    val suffix = if (isTnd) "DT" else currencyCode
+    return if (suffix.isNullOrBlank()) amount else "$amount $suffix"
 }
 
 private fun String?.equalsIgnoreCase(other: String) = this != null && this.equals(other, ignoreCase = true)

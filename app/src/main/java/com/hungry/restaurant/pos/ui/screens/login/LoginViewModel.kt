@@ -12,18 +12,21 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hungry.restaurant.pos.HungryPosApp
 import com.hungry.restaurant.pos.auth.AuthException
 import com.hungry.restaurant.pos.auth.AuthManager
-import com.hungry.restaurant.pos.auth.AuthUser
 import com.hungry.restaurant.pos.auth.KeycloakConfig
 import com.hungry.restaurant.pos.data.repository.RestaurantSessionRepository
 import com.hungry.restaurant.pos.di.AppContainer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Screen 01b's 3-step reveal. */
+enum class AuthStep { ACCOUNT_VERIFIED, CONNECTING, LOADING_ORDERS }
+
 sealed interface LoginUiState {
     data object SignedOut : LoginUiState
-    data object Authenticating : LoginUiState
+    data class Authenticating(val step: AuthStep, val restaurantName: String? = null) : LoginUiState
     data object Authenticated : LoginUiState
     data class AccessDenied(val email: String?) : LoginUiState
     data class Error(val message: String) : LoginUiState
@@ -37,6 +40,11 @@ sealed interface LoginUiState {
  * that authenticates locally but can't actually reach the backend (e.g. one
  * cached from a since-changed Keycloak instance) is treated as unusable and
  * cleared, the same way the removed staff-picker screen used to bounce back.
+ *
+ * [LoginUiState.Authenticating]'s 3 steps (screen 01b) map onto this actual
+ * work rather than being decorative: ACCOUNT_VERIFIED is the Keycloak token
+ * already in hand, CONNECTING is [RestaurantSessionRepository.refresh], and
+ * LOADING_ORDERS is [AppContainer.startOrderPolling].
  */
 class LoginViewModel(
     private val authManager: AuthManager,
@@ -57,7 +65,7 @@ class LoginViewModel(
     private fun initialState(): LoginUiState {
         val user = authManager.authUser.value
         return if (user != null && user.hasRole(KeycloakConfig.REQUIRED_ROLE)) {
-            LoginUiState.Authenticating
+            LoginUiState.Authenticating(AuthStep.ACCOUNT_VERIFIED, sessionRepository.restaurant.value?.name)
         } else {
             LoginUiState.SignedOut
         }
@@ -67,7 +75,7 @@ class LoginViewModel(
 
     fun onAuthorizationResult(result: ActivityResult) {
         viewModelScope.launch {
-            _uiState.value = LoginUiState.Authenticating
+            _uiState.value = LoginUiState.Authenticating(AuthStep.ACCOUNT_VERIFIED)
             try {
                 val data = result.data
                 if (result.resultCode != Activity.RESULT_OK || data == null) {
@@ -105,19 +113,24 @@ class LoginViewModel(
      * and start the order-board polling that used to kick off there too.
      */
     private suspend fun resolveSessionThenAuthenticate() {
+        delay(STEP_REVEAL_MS) // let "Account verified" register before advancing
+        _uiState.value = LoginUiState.Authenticating(AuthStep.CONNECTING, sessionRepository.restaurant.value?.name)
         val resolved = sessionRepository.refresh()
         if (resolved.isFailure) {
             Log.e(TAG, "Signed in with Keycloak but couldn't resolve the restaurant", resolved.exceptionOrNull())
             authManager.clearSession()
-            _uiState.value = LoginUiState.Error("Couldn't reach the restaurant backend. Please try again.")
+            _uiState.value = LoginUiState.Error("Couldn't reach Hungry. You're signed out. Check the terminal's connection and try again.")
             return
         }
+        _uiState.value = LoginUiState.Authenticating(AuthStep.LOADING_ORDERS, sessionRepository.restaurant.value?.name)
         appContainer.startOrderPolling()
+        delay(STEP_REVEAL_MS)
         _uiState.value = LoginUiState.Authenticated
     }
 
     companion object {
         private const val TAG = "LoginViewModel"
+        private const val STEP_REVEAL_MS = 350L
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

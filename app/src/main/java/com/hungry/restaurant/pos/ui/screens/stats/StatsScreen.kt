@@ -2,7 +2,6 @@ package com.hungry.restaurant.pos.ui.screens.stats
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,14 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingDown
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,8 +29,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,89 +40,154 @@ import com.hungry.restaurant.pos.data.model.StatsPeriod
 import com.hungry.restaurant.pos.data.model.StatsSummary
 import com.hungry.restaurant.pos.data.model.asCurrency
 import com.hungry.restaurant.pos.data.model.asSignedPct
-import com.hungry.restaurant.pos.ui.theme.HungryOrange
-import com.hungry.restaurant.pos.ui.theme.HungryOrangeDark
-import com.hungry.restaurant.pos.ui.theme.NegativeRed
-import com.hungry.restaurant.pos.ui.theme.PositiveGreen
+import com.hungry.restaurant.pos.ui.components.EmptyState
+import com.hungry.restaurant.pos.ui.components.SegmentedTabs
+import com.hungry.restaurant.pos.ui.theme.Hungry
+import com.hungry.restaurant.pos.ui.theme.HungryRadius
 
 @Composable
 fun StatsScreen(
     contentPadding: PaddingValues,
     viewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory),
 ) {
+    val c = Hungry.colors
+    val type = Hungry.type
     val period by viewModel.period.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize().background(c.canvas),
         contentPadding = PaddingValues(
-            top = contentPadding.calculateTopPadding() + 8.dp,
+            top = contentPadding.calculateTopPadding() + 12.dp,
             bottom = contentPadding.calculateBottomPadding() + 24.dp,
             start = 16.dp,
             end = 16.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Text("Stats", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatsPeriod.entries.forEach { p ->
-                    FilterChip(
-                        selected = period == p,
-                        onClick = { viewModel.selectPeriod(p) },
-                        label = { Text(p.name.lowercase().replaceFirstChar(Char::uppercase)) },
-                        shape = RoundedCornerShape(50),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.onSurface,
-                            selectedLabelColor = MaterialTheme.colorScheme.surface,
-                        ),
-                    )
-                }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Stats", style = type.headline, color = c.ink)
+                SegmentedTabs(
+                    options = StatsPeriod.entries,
+                    selected = period,
+                    onSelect = viewModel::selectPeriod,
+                    label = { it.name.lowercase().replaceFirstChar(Char::uppercase) },
+                    small = true,
+                    modifier = Modifier.width(228.dp),
+                )
             }
         }
 
-        val s = stats ?: return@LazyColumn
-        item { RevenueHero(s) }
-        item { KpiGrid(s) }
-        item { HourlyRevenueCard(s) }
-        item { TopItemsCard(s) }
+        val s = stats
+        if (s == null || s.ordersCount == 0) {
+            item { RevenueCard(s, emptyState = true) }
+            item {
+                EmptyState(
+                    icon = Icons.Outlined.BarChart,
+                    title = "No sales yet ${period.name.lowercase()}",
+                    body = "Stats fill in as orders are completed. Check Week for recent results.",
+                    actionLabel = if (period != StatsPeriod.WEEK) "View this week" else null,
+                    onAction = { viewModel.selectPeriod(StatsPeriod.WEEK) },
+                    modifier = Modifier.padding(top = 24.dp),
+                )
+            }
+        } else {
+            item { RevenueCard(s, emptyState = false) }
+            item { KpiGrid(s) }
+            item { TopItemsCard(s) }
+        }
     }
 }
 
 @Composable
-private fun RevenueHero(s: StatsSummary) {
+private fun RevenueCard(s: StatsSummary?, emptyState: Boolean) {
+    val c = Hungry.colors
+    val type = Hungry.type
+    val isTnd = s?.currency?.equals("TND", ignoreCase = true) != false
+    val suffix = if (isTnd) "DT" else s?.currency ?: ""
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(listOf(HungryOrange, HungryOrangeDark)))
+            .clip(HungryRadius.card)
+            .background(c.surface)
             .padding(20.dp),
     ) {
-        Text("Revenue", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.85f))
+        Text("Revenue", style = type.label, color = c.inkMuted)
         Spacer(Modifier.height(6.dp))
-        Text(
-            s.revenue.asCurrency(s.currency),
-            style = MaterialTheme.typography.displaySmall,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-        )
-        s.revenueChangePct?.let { delta ->
-            Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                (s?.revenue ?: 0.0).asCurrency(s?.currency, withSuffix = false),
+                style = type.stat,
+                color = if (emptyState) c.inkMuted else c.ink,
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(suffix, style = type.bodyStrong, color = c.inkMuted, modifier = Modifier.padding(bottom = 4.dp))
+        }
+        if (!emptyState && s?.revenueChangePct != null) {
+            Spacer(Modifier.height(6.dp))
+            val positive = s.revenueChangePct >= 0
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    if (delta >= 0) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
+                    if (positive) Icons.AutoMirrored.Outlined.TrendingUp else Icons.AutoMirrored.Outlined.TrendingDown,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
+                    tint = if (positive) c.success else c.danger,
+                    modifier = Modifier.size(16.dp),
                 )
-                Spacer(Modifier.width(6.dp))
-                Text("${delta.asSignedPct()} vs previous period", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "${s.revenueChangePct.asSignedPct()} vs last period",
+                    style = type.caption.copy(fontWeight = FontWeight.Bold),
+                    color = if (positive) c.success else c.danger,
+                )
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        HourlyBarChart(s?.hourlyRevenue ?: List(24) { 0.0 })
+    }
+}
+
+@Composable
+private fun HourlyBarChart(hourlyRevenue: List<Double>) {
+    val c = Hungry.colors
+    val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    // Business-hours window - matches the mockup's visible 11h..23h range rather than a full,
+    // mostly-empty 24-bar day.
+    val hours = (11..23).toList()
+    val max = hours.mapNotNull { hourlyRevenue.getOrNull(it) }.maxOrNull()?.coerceAtLeast(1.0) ?: 1.0
+    val neutralBar = c.outline
+    Canvas(Modifier.fillMaxWidth().height(120.dp)) {
+        val count = hours.size
+        val gap = 4.dp.toPx()
+        val barWidth = (size.width - gap * (count - 1)) / count
+        hours.forEachIndexed { i, hour ->
+            val v = hourlyRevenue.getOrNull(hour) ?: 0.0
+            val x = i * (barWidth + gap)
+            val isCurrent = hour == currentHour
+            val isFuture = hour > currentHour
+            if (isFuture) {
+                drawRoundRect(
+                    color = c.outline,
+                    topLeft = Offset(x, size.height - 18.dp.toPx()),
+                    size = Size(barWidth, 18.dp.toPx()),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx()),
+                    style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))),
+                )
+            } else if (v > 0) {
+                val barHeight = (v / max).toFloat() * size.height
+                drawRoundRect(
+                    color = if (isCurrent) c.primary else neutralBar,
+                    topLeft = Offset(x, size.height - barHeight),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx()),
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        listOf(11, 14, 17, 20, 23).forEach { h ->
+            Text("${h}h", style = Hungry.type.caption, color = c.inkMuted)
         }
     }
 }
@@ -138,130 +200,63 @@ private fun KpiGrid(s: StatsSummary) {
             KpiTile("Avg prep", s.avgPrepMinutes?.let { "${it.toInt()} min" } ?: "—", Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            KpiTile("Accepted", "${s.acceptedPct.toInt()}%", Modifier.weight(1f), PositiveGreen)
-            KpiTile("Cancelled", s.cancelledCount.toString(), Modifier.weight(1f), if (s.cancelledCount > 0) NegativeRed else null)
+            KpiTile("Accepted", "${s.acceptedPct.toInt()}%", Modifier.weight(1f), Hungry.colors.success)
+            KpiTile("Cancelled", s.cancelledCount.toString(), Modifier.weight(1f), if (s.cancelledCount > 0) Hungry.colors.danger else null)
         }
     }
 }
 
 @Composable
 private fun KpiTile(label: String, value: String, modifier: Modifier = Modifier, valueColor: Color? = null) {
+    val c = Hungry.colors
+    val type = Hungry.type
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(14.dp),
+            .clip(HungryRadius.card)
+            .background(c.surface)
+            .padding(16.dp),
     ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.titleLarge,
-            color = valueColor ?: MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun HourlyRevenueCard(s: StatsSummary) {
-    SectionCard(title = "Revenue by hour") {
-        val max = (s.hourlyRevenue.maxOrNull() ?: 0.0).coerceAtLeast(1.0)
-        val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        val neutralBar = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .padding(top = 8.dp),
-        ) {
-            val count = s.hourlyRevenue.size
-            if (count == 0) return@Canvas
-            val gap = 3.dp.toPx()
-            val barWidth = (size.width - gap * (count - 1)) / count
-            // Only the current hour is highlighted in the brand color - every other
-            // bar is a neutral grey, matching the mockup rather than an all-orange chart.
-            s.hourlyRevenue.forEachIndexed { i, v ->
-                val barHeight = (v / max).toFloat() * size.height
-                val x = i * (barWidth + gap)
-                val isCurrent = i == currentHour
-                if (barHeight > 0f) {
-                    drawRoundRect(
-                        color = if (isCurrent) HungryOrange else neutralBar,
-                        topLeft = Offset(x, size.height - barHeight),
-                        size = Size(barWidth, barHeight),
-                        cornerRadius = CornerRadius(3f, 3f),
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("12am", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("12pm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("11pm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        Text(label, style = type.label, color = c.inkMuted)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = type.headline, color = valueColor ?: c.ink)
     }
 }
 
 @Composable
 private fun TopItemsCard(s: StatsSummary) {
-    SectionCard(title = "Top selling items") {
-        if (s.topItems.isEmpty()) {
-            Text(
-                "No items sold in this period yet.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            return@SectionCard
-        }
-        Column(modifier = Modifier.padding(top = 4.dp)) {
-            s.topItems.forEachIndexed { index, item ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "${index + 1}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        item.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text("×${item.quantity}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+    val c = Hungry.colors
+    val type = Hungry.type
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(HungryRadius.card)
+            .background(c.surface)
             .padding(16.dp),
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-        content()
+        Text("Top items", style = type.title, color = c.ink)
+        Spacer(Modifier.height(10.dp))
+        if (s.topItems.isEmpty()) {
+            Text("No items sold in this period yet.", style = type.body, color = c.inkMuted)
+        } else {
+            val max = s.topItems.maxOf { it.quantity }.coerceAtLeast(1)
+            s.topItems.forEachIndexed { index, item ->
+                Column(Modifier.padding(top = if (index == 0) 0.dp else 14.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(item.name, style = type.bodyStrong, color = c.ink)
+                        Text(item.quantity.toString(), style = type.bodyStrong, color = c.ink)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Box(Modifier.fillMaxWidth().height(6.dp).clip(HungryRadius.pill).background(c.surfaceSunken)) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(item.quantity.toFloat() / max.toFloat())
+                                .height(6.dp)
+                                .clip(HungryRadius.pill)
+                                .background(c.ink),
+                        )
+                    }
+                }
+            }
+        }
     }
 }

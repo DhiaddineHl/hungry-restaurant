@@ -1,22 +1,48 @@
 package com.hungry.restaurant.pos.ui.theme
 
-import androidx.compose.material3.Typography
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.hungry.restaurant.pos.R
 
-// System font stack keeps the APK light; swap in a bundled font later if desired.
-val AppTypography = Typography(
-    displaySmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp),
-    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 24.sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
-    titleSmall = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 18.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp),
+// Add res/font/montserrat_{medium,semibold,bold,extrabold}.ttf (Google Fonts, OFL).
+val Montserrat = FontFamily(
+    Font(R.font.montserrat_medium, FontWeight.Medium),
+    Font(R.font.montserrat_semibold, FontWeight.SemiBold),
+    Font(R.font.montserrat_bold, FontWeight.Bold),
+    Font(R.font.montserrat_extrabold, FontWeight.ExtraBold),
 )
+
+// Tabular figures so prices/timers don't jitter.
+private fun s(size: Int, line: Int, weight: FontWeight, trackingPx: Float = 0f) = TextStyle(
+    fontFamily = Montserrat,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    fontWeight = weight,
+    letterSpacing = (trackingPx / size).em,
+    fontFeatureSettings = "tnum",
+)
+
+@Immutable
+data class HungryType(
+    val display: TextStyle = s(34, 38, FontWeight.ExtraBold, -1f),
+    val hero: TextStyle = s(30, 36, FontWeight.ExtraBold, -0.9f),
+    val stat: TextStyle = s(30, 36, FontWeight.ExtraBold, -1f),
+    val headline: TextStyle = s(24, 30, FontWeight.Bold, -0.5f),
+    val orderId: TextStyle = s(20, 24, FontWeight.ExtraBold, -0.4f),
+    val title: TextStyle = s(18, 24, FontWeight.Bold, -0.3f),
+    val bodyStrong: TextStyle = s(15, 21, FontWeight.Bold),
+    val body: TextStyle = s(14, 21, FontWeight.SemiBold),
+    val label: TextStyle = s(13, 19, FontWeight.SemiBold),
+    val caption: TextStyle = s(12, 17, FontWeight.Medium),
+    val overline: TextStyle = s(12, 16, FontWeight.Bold, 0.6f), // render uppercase
+    val badge: TextStyle = s(11, 14, FontWeight.Bold),
+    val button: TextStyle = s(16, 20, FontWeight.ExtraBold),
+)
+
+val LocalHungryType = staticCompositionLocalOf { HungryType() }

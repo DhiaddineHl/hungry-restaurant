@@ -17,6 +17,8 @@ import com.hungry.restaurant.pos.data.repository.RealRestaurantSessionRepository
 import com.hungry.restaurant.pos.data.repository.RealStatsRepository
 import com.hungry.restaurant.pos.data.repository.RestaurantSessionRepository
 import com.hungry.restaurant.pos.data.repository.StatsRepository
+import com.hungry.restaurant.pos.data.repository.ThemeModeRepository
+import com.hungry.restaurant.pos.notification.AlertSoundPlayer
 import com.hungry.restaurant.pos.printer.SunmiPrinter
 
 /**
@@ -44,6 +46,8 @@ class AppContainer(context: Context) {
     val statsRepository: StatsRepository = RealStatsRepository(api)
 
     val sunmiPrinter: SunmiPrinter = SunmiPrinter(context.applicationContext)
+    val themeModeRepository: ThemeModeRepository = ThemeModeRepository(context.applicationContext)
+    val alertSoundPlayer: AlertSoundPlayer = AlertSoundPlayer(context.applicationContext)
 
     /** Starts the order-board poll loop - called once the restaurant session resolves after sign-in. */
     fun startOrderPolling() = realOrderRepository.ensurePolling()

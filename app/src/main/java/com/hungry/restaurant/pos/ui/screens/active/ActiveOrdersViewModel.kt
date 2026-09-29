@@ -9,9 +9,11 @@ import com.hungry.restaurant.pos.HungryPosApp
 import com.hungry.restaurant.pos.data.model.Order
 import com.hungry.restaurant.pos.data.model.OrderStatus
 import com.hungry.restaurant.pos.data.model.RestaurantProfile
+import com.hungry.restaurant.pos.data.repository.ConnectionState
 import com.hungry.restaurant.pos.data.repository.OrderRepository
 import com.hungry.restaurant.pos.data.repository.PosSettingsRepository
 import com.hungry.restaurant.pos.data.repository.RestaurantSessionRepository
+import com.hungry.restaurant.pos.notification.AlertSoundPlayer
 import com.hungry.restaurant.pos.printer.SunmiPrinter
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +43,7 @@ class ActiveOrdersViewModel(
     private val sessionRepository: RestaurantSessionRepository,
     private val posSettingsRepository: PosSettingsRepository,
     val printer: SunmiPrinter,
+    private val alertSoundPlayer: AlertSoundPlayer,
 ) : ViewModel() {
 
     val board: StateFlow<ActiveBoard> = orderRepository.orders
@@ -55,6 +58,10 @@ class ActiveOrdersViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveBoard())
 
     val restaurant: StateFlow<RestaurantProfile?> = sessionRepository.restaurant
+    val connection: StateFlow<ConnectionState> = orderRepository.connection
+    val defaultPrepTimeMinutes: StateFlow<Int?> = posSettingsRepository.settings
+        .map { it?.defaultPrepTimeMinutes }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _selectedTab = MutableStateFlow(BoardTab.NEW)
     val selectedTab: StateFlow<BoardTab> = _selectedTab.asStateFlow()
@@ -112,6 +119,13 @@ class ActiveOrdersViewModel(
 
     fun reconnectPrinter() = printer.connect()
 
+    /** E3's auto-retry and manual "Retry" link both call this. */
+    fun retryNow() {
+        viewModelScope.launch { orderRepository.refresh() }
+    }
+
+    fun testAlertSound() = alertSoundPlayer.playOnce()
+
     fun print(order: Order) {
         viewModelScope.launch {
             printer.printReceipt(order)
@@ -129,6 +143,7 @@ class ActiveOrdersViewModel(
                     app.container.restaurantSession,
                     app.container.posSettingsRepository,
                     app.container.sunmiPrinter,
+                    app.container.alertSoundPlayer,
                 )
             }
         }

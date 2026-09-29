@@ -1,10 +1,6 @@
 package com.hungry.restaurant.pos.ui.navigation
 
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -16,7 +12,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -36,7 +34,12 @@ import com.hungry.restaurant.pos.ui.screens.incoming.IncomingOrderAlertScreen
 import com.hungry.restaurant.pos.ui.screens.login.LoginScreen
 import com.hungry.restaurant.pos.ui.screens.menu.MenuScreen
 import com.hungry.restaurant.pos.ui.screens.settings.SettingsScreen
+import com.hungry.restaurant.pos.ui.components.BottomNavItem
+import com.hungry.restaurant.pos.ui.components.HungryBottomNav
+import com.hungry.restaurant.pos.ui.components.HungryToast
 import com.hungry.restaurant.pos.ui.screens.stats.StatsScreen
+import com.hungry.restaurant.pos.ui.theme.Hungry
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -67,9 +70,31 @@ fun AppNavigation() {
         }
     }
 
+    // Rings the terminal's notification tone for a new order, repeating every few
+    // seconds while Settings > Ring until accepted is on and the queue isn't empty.
+    LaunchedEffect(pendingAlerts.size, posSettings?.ringUntilAccepted) {
+        if (pendingAlerts.isEmpty()) return@LaunchedEffect
+        app.container.alertSoundPlayer.playOnce()
+        while (posSettings?.ringUntilAccepted == true && pendingAlerts.isNotEmpty()) {
+            delay(4_000)
+            if (pendingAlerts.isNotEmpty()) app.container.alertSoundPlayer.playOnce()
+        }
+    }
+
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Hungry.colors.canvas,
+        snackbarHost = {
+            // Screen E4's Toast (§5) - a failure message with an optional "Retry" action,
+            // sitting above the sticky action bar via the Scaffold's own snackbar slot.
+            SnackbarHost(snackbarHostState) { data ->
+                HungryToast(
+                    message = data.visuals.message,
+                    actionLabel = data.visuals.actionLabel,
+                    onAction = if (data.visuals.actionLabel != null) { { data.performAction() } } else null,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        },
         bottomBar = {
             if (showBottomBar) {
                 BottomBar(
@@ -182,25 +207,18 @@ fun AppNavigation() {
     }
 }
 
+/** [TopLevelDestination] and [BottomNavItem] list the same 5 tabs in the same order. */
+private fun TopLevelDestination.toNavItem(): BottomNavItem = BottomNavItem.entries[ordinal]
+private fun BottomNavItem.toDestination(): TopLevelDestination = TopLevelDestination.entries[ordinal]
+
 @Composable
 private fun BottomBar(
     currentRoute: String?,
     onSelect: (TopLevelDestination) -> Unit,
 ) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        TopLevelDestination.entries.forEach { destination ->
-            val selected = currentRoute == destination.route
-            NavigationBarItem(
-                selected = selected,
-                onClick = { onSelect(destination) },
-                icon = { Icon(destination.icon, contentDescription = destination.label) },
-                label = { Text(destination.label) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            )
-        }
-    }
+    val selected = TopLevelDestination.entries.firstOrNull { it.route == currentRoute } ?: TopLevelDestination.ACTIVE
+    HungryBottomNav(
+        selected = selected.toNavItem(),
+        onSelect = { onSelect(it.toDestination()) },
+    )
 }

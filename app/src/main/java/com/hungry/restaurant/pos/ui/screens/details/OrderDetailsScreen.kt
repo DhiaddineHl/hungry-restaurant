@@ -2,6 +2,7 @@ package com.hungry.restaurant.pos.ui.screens.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,26 +13,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Print
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,19 +38,31 @@ import com.hungry.restaurant.pos.data.model.Order
 import com.hungry.restaurant.pos.data.model.OrderItem
 import com.hungry.restaurant.pos.data.model.OrderStatus
 import com.hungry.restaurant.pos.data.model.asCurrency
+import com.hungry.restaurant.pos.ui.components.PrimaryButton
+import com.hungry.restaurant.pos.ui.components.SquareIconButton
 import com.hungry.restaurant.pos.ui.components.StatusPill
-import com.hungry.restaurant.pos.ui.theme.HungryOrange
+import com.hungry.restaurant.pos.ui.components.TextLink
+import com.hungry.restaurant.pos.ui.components.HungryTopBar
+import com.hungry.restaurant.pos.ui.theme.Hungry
+import com.hungry.restaurant.pos.ui.theme.HungryRadius
 import com.hungry.restaurant.pos.ui.util.clockTime
 import com.hungry.restaurant.pos.ui.util.dateTime
-import com.hungry.restaurant.pos.ui.util.visual
+import com.hungry.restaurant.pos.ui.util.label
+import com.hungry.restaurant.pos.ui.util.statusTone
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Screen 04. The mockup also shows a rider row ("Rider Hamza · arrives 12:36")
+ * and a customer phone-call button - both dropped here because the backend's
+ * `Order` has no courier-assignment or customer-phone field to back them
+ * (matching this pass's "ask before changing data models" constraint).
+ */
 @Composable
 fun OrderDetailsScreen(
     onBack: () -> Unit,
     onMessage: (String) -> Unit,
     viewModel: OrderDetailsViewModel = viewModel(factory = OrderDetailsViewModel.Factory),
 ) {
+    val c = Hungry.colors
     val order by viewModel.order.collectAsStateWithLifecycle()
     val defaultPrepTimeMinutes by viewModel.defaultPrepTimeMinutes.collectAsStateWithLifecycle()
 
@@ -67,19 +71,18 @@ fun OrderDetailsScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = c.canvas,
         topBar = {
-            TopAppBar(
-                title = { Text(order?.let { "Order #${it.code}" } ?: "Order") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+            HungryTopBar(
+                title = order?.let { "#${it.code}" } ?: "Order",
+                onBack = onBack,
+                orderIdStyle = true,
+                trailing = {
+                    order?.let {
+                        val (fg, bg) = it.status.statusTone()
+                        StatusPill(it.status.label(), fg = fg, bg = bg)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                ),
             )
         },
         bottomBar = {
@@ -89,13 +92,11 @@ fun OrderDetailsScreen(
         val current = order
         if (current == null) {
             Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                Modifier.fillMaxSize().padding(padding),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Order not found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Order not found.", style = Hungry.type.body, color = c.inkMuted)
             }
             return@Scaffold
         }
@@ -106,51 +107,26 @@ fun OrderDetailsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Spacer(Modifier.height(2.dp))
-            StatusHeader(current)
             if (current.status == OrderStatus.CONFIRMED || current.status == OrderStatus.PREPARING) {
                 DueTimeCard(current, defaultPrepTimeMinutes)
             }
             CustomerCard(current)
-            ItemsCard(current)
-            TotalsCard(current)
             current.comment?.takeIf { it.isNotBlank() }?.let { NoteCard(it) }
             current.cancelReason?.takeIf { it.isNotBlank() }?.let { NoteCard("Cancelled: $it") }
+            ItemsCard(current)
+            TotalsCard(current)
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun StatusHeader(order: Order) {
-    val vis = order.status.visual()
-    Card {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    "#${order.code}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    dateTime(order.placedAtMillis),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            StatusPill(vis.label, vis.color)
-        }
-    }
-}
-
-@Composable
 private fun DueTimeCard(order: Order, defaultPrepTimeMinutes: Int) {
+    val c = Hungry.colors
+    val type = Hungry.type
     val confirmedAt = order.confirmedAtMillis ?: return
     val dueAtMillis = confirmedAt + defaultPrepTimeMinutes * 60_000L
     val now = System.currentTimeMillis()
@@ -160,71 +136,50 @@ private fun DueTimeCard(order: Order, defaultPrepTimeMinutes: Int) {
 
     Card {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                "Accepted ${clockTime(confirmedAt)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("Accepted ${clockTime(confirmedAt)}", style = type.body, color = c.inkMuted)
             Text(
                 if (overdue) "Due ${clockTime(dueAtMillis)} · ${-minutesLeft} min overdue" else "Due ${clockTime(dueAtMillis)} · $minutesLeft min left",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
+                style = type.bodyStrong,
+                color = if (overdue) c.danger else c.info,
             )
         }
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
             progress = { elapsedFraction },
-            color = if (overdue) MaterialTheme.colorScheme.error else HungryOrange,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(50)),
+            color = if (overdue) c.danger else c.info,
+            trackColor = c.infoSoft,
+            modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(50)),
         )
     }
 }
 
 @Composable
 private fun CustomerCard(order: Order) {
+    val c = Hungry.colors
+    val type = Hungry.type
     Card {
-        InfoRow(Icons.Outlined.Person, "Customer", order.customerName)
-        order.dropoffAddress?.takeIf { it.isNotBlank() }?.let {
-            Spacer(Modifier.height(12.dp))
-            InfoRow(Icons.Outlined.LocationOn, "Address", it)
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(order.customerName, style = type.title, color = c.ink)
+        order.dropoffAddress?.takeIf { it.isNotBlank() }?.let { address ->
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = c.inkMuted, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(address, style = type.body, color = c.inkMuted)
+            }
         }
     }
 }
 
 @Composable
 private fun ItemsCard(order: Order) {
+    val c = Hungry.colors
+    val type = Hungry.type
     Card {
-        Text(
-            "Items (${order.itemCount})",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(8.dp))
         order.items.forEachIndexed { index, item ->
             ItemRow(item, order.currency)
             if (index != order.items.lastIndex) {
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.material3.HorizontalDivider(color = c.outline, thickness = 1.dp)
                 Spacer(Modifier.height(10.dp))
             }
         }
@@ -233,137 +188,102 @@ private fun ItemsCard(order: Order) {
 
 @Composable
 private fun ItemRow(item: OrderItem, currency: String?) {
-    Column {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.weight(1f)) {
-                Text(
-                    "${item.quantity}×",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+    val c = Hungry.colors
+    val type = Hungry.type
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier.size(32.dp).clip(HungryRadius.control).background(c.surfaceSunken),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(item.quantity.toString(), style = type.bodyStrong, color = c.ink)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.name, style = type.bodyStrong, color = c.ink)
+            if (item.modifiers.isNotEmpty()) {
+                Text(item.modifiers.joinToString(" · "), style = type.caption, color = c.inkMuted)
             }
-            Text(
-                item.lineTotal.asCurrency(currency),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
         }
-        item.modifiers.forEach { mod ->
-            Text(
-                mod,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 26.dp, top = 2.dp),
-            )
-        }
+        Text(item.lineTotal.asCurrency(currency, withSuffix = false), style = type.bodyStrong, color = c.ink)
     }
 }
 
 @Composable
 private fun TotalsCard(order: Order) {
+    val c = Hungry.colors
+    val type = Hungry.type
     Card {
-        TotalRow("Subtotal", order.subtotal.asCurrency(order.currency))
-        if (order.discountTotal > 0) TotalRow("Discount", "-${order.discountTotal.asCurrency(order.currency)}")
-        if (order.deliveryFee > 0) TotalRow("Delivery fee", order.deliveryFee.asCurrency(order.currency))
-        if (order.serviceFee > 0) TotalRow("Service fee", order.serviceFee.asCurrency(order.currency))
-        if (order.additionalFees > 0) TotalRow("Additional fees", order.additionalFees.asCurrency(order.currency))
-        Spacer(Modifier.height(8.dp))
+        TotalRow("Subtotal", order.subtotal.asCurrency(order.currency, withSuffix = false))
+        if (order.discountTotal > 0) TotalRow("Discount", "-${order.discountTotal.asCurrency(order.currency, withSuffix = false)}")
+        if (order.deliveryFee > 0) TotalRow("Delivery", order.deliveryFee.asCurrency(order.currency, withSuffix = false))
+        if (order.serviceFee > 0) TotalRow("Service fee", order.serviceFee.asCurrency(order.currency, withSuffix = false))
+        if (order.additionalFees > 0) TotalRow("Additional fees", order.additionalFees.asCurrency(order.currency, withSuffix = false))
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.material3.HorizontalDivider(color = c.outline, thickness = 1.dp)
+        Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(
-                order.total.asCurrency(order.currency),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-            )
+            Text("Total", style = type.bodyStrong, color = c.ink)
+            Text(order.total.asCurrency(order.currency), style = type.title, color = c.ink)
         }
     }
 }
 
 @Composable
 private fun TotalRow(label: String, value: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+    val c = Hungry.colors
+    val type = Hungry.type
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = type.body, color = c.inkMuted)
+        Text(value, style = type.body, color = c.ink)
     }
 }
 
 @Composable
 private fun NoteCard(note: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
+    val c = Hungry.colors
+    val type = Hungry.type
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(HungryRadius.field)
+            .background(c.primarySoft)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                "Note",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                note,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
+        Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = c.onPrimarySoft, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(10.dp))
+        Text("“$note”", style = type.bodyStrong, color = c.onPrimarySoft)
     }
 }
 
 @Composable
 private fun ActionBar(order: Order, viewModel: OrderDetailsViewModel) {
-    Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 8.dp) {
-        Column(Modifier.padding(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(
-                    onClick = { viewModel.print() },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(52.dp),
-                ) {
-                    Icon(Icons.Outlined.Print, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Print")
-                }
-                when (order.status) {
-                    OrderStatus.CREATED -> Button(
-                        onClick = { viewModel.accept() },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f).height(52.dp),
-                    ) { Text("Accept", style = MaterialTheme.typography.titleMedium) }
-
-                    OrderStatus.CONFIRMED, OrderStatus.PREPARING -> Button(
-                        onClick = { viewModel.markReady() },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f).height(52.dp),
-                    ) { Text("Mark as ready", style = MaterialTheme.typography.titleMedium) }
-
-                    else -> {}
-                }
+    val c = Hungry.colors
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(c.surface)
+            .padding(16.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            SquareIconButton(Icons.Outlined.Print, onClick = viewModel::print, tint = c.ink, contentDescription = "Print")
+            when (order.status) {
+                OrderStatus.CREATED -> PrimaryButton("Accept", onClick = viewModel::accept, modifier = Modifier.weight(1f), height = 48.dp)
+                OrderStatus.CONFIRMED, OrderStatus.PREPARING -> PrimaryButton(
+                    "Mark as ready",
+                    onClick = viewModel::markReady,
+                    modifier = Modifier.weight(1f),
+                    height = 48.dp,
+                )
+                else -> {}
             }
-            if (order.status == OrderStatus.CREATED) {
-                TextButton(onClick = { viewModel.reject() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Reject order", color = MaterialTheme.colorScheme.error)
-                }
-            } else if (order.status.isActive) {
-                TextButton(onClick = { viewModel.cancel() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Cancel order", color = MaterialTheme.colorScheme.error)
-                }
-            }
+        }
+        if (order.status == OrderStatus.CREATED) {
+            Spacer(Modifier.height(8.dp))
+            TextLink("Reject order", onClick = viewModel::reject, color = c.danger, modifier = Modifier.fillMaxWidth())
+        } else if (order.status.isActive) {
+            Spacer(Modifier.height(8.dp))
+            TextLink("Cancel order", onClick = viewModel::cancel, color = c.danger, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -374,8 +294,8 @@ private fun Card(content: @Composable androidx.compose.foundation.layout.ColumnS
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(HungryRadius.card)
+            .background(Hungry.colors.surface)
             .padding(16.dp),
         content = content,
     )

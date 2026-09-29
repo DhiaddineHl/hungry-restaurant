@@ -29,6 +29,9 @@ class RealOrderRepository(private val api: RestaurantPosApi) : OrderRepository {
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     override val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
+    private val _connection = MutableStateFlow(ConnectionState())
+    override val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
+
     private val _newOrderEvents = MutableSharedFlow<Order>(extraBufferCapacity = 8)
     override val newOrderEvents = _newOrderEvents
 
@@ -75,8 +78,10 @@ class RealOrderRepository(private val api: RestaurantPosApi) : OrderRepository {
             // future *different* order reusing... it never will (server ids are UUIDs), but this
             // keeps the set from growing forever across a long-running terminal session.
             knownCreatedIds.retainAll(nowCreated.map { it.id }.toSet())
+            _connection.value = ConnectionState(isOnline = true, lastSyncMillis = System.currentTimeMillis())
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh orders", e)
+            _connection.value = _connection.value.copy(isOnline = false)
         }
     }
 
