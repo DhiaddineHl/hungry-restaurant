@@ -1,7 +1,18 @@
 <resources>
-    <!-- Base theme; the Compose UI drives real colors. Splash background uses brand orange. -->
+    <!-- Base theme; the Compose UI drives real colors. -->
     <style name="Theme.HungryPOS" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/brand_orange</item>
         <item name="android:windowBackground">@color/white</item>
+    </style>
+
+    <!-- Screen 00 (Splash) - the OS-level splash androidx.core.splashscreen shows for the
+         instant before Compose loads. Navy background per the design system (same in both
+         themes); the actual "hungry." wordmark + PARTNER pill + spinner is the Compose
+         SplashScreen route that takes over immediately after (see MainActivity/SplashScreen.kt) -
+         this system splash only needs to avoid a white flash and hold the app's icon briefly. -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_navy</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.HungryPOS</item>
     </style>
 </resources>

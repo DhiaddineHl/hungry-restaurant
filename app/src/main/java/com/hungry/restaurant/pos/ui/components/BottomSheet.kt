@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +47,11 @@ fun HungryBottomSheet(
             }
         },
     ) {
-        Column(modifier.fillMaxWidth().padding(20.dp)) {
+        // ModalBottomSheet hosts itself in its own window, which doesn't inherit the
+        // Activity's system-bar visibility - on hardware with a persistent 3-button nav
+        // bar (as opposed to gesture nav) it reappears just for this sheet and would
+        // otherwise sit on top of whatever's at the bottom of `content` (e.g. Save).
+        Column(modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp)) {
             content()
         }
     }

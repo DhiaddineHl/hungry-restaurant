@@ -75,9 +75,20 @@ fun ActiveOrderCard(
             .clickable(onClick = onClick)
             .padding(14.dp),
     ) {
-        // Row 1: order id + age badge
+        // Row 1: order id + age badge. The order code can run long (e.g. the cart
+        // checkout flow's "ORD-20260929-F9R8NN", well past the mockup's short "#P-231"),
+        // so the id truncates with an ellipsis instead of squeezing the badge into a
+        // vertical sliver.
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("#${order.code}", style = type.orderId, color = c.ink)
+            Text(
+                "#${order.code}",
+                style = type.orderId,
+                color = c.ink,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Spacer(Modifier.width(8.dp))
             Badge(relativeTime(order.placedAtMillis), fg = c.inkMuted, bg = c.surfaceSunken)
         }
 

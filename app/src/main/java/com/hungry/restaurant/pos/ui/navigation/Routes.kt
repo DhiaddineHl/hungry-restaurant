@@ -9,7 +9,11 @@ import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.ui.graphics.vector.ImageVector
 
 object Routes {
-    /** Keycloak sign-in - the only entry point. Success goes straight to [ACTIVE]. */
+    /** Screen 00 - brand moment shown just long enough to be legible, then always → [LOGIN]
+     *  (which itself already shows 01b/skips straight to [ACTIVE] for a cached session). */
+    const val SPLASH = "splash"
+
+    /** Keycloak sign-in - the only entry point after splash. Success goes straight to [ACTIVE]. */
     const val LOGIN = "login"
 
     const val ACTIVE = "active"

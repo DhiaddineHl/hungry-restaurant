@@ -24,7 +24,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class BoardTab { NEW, PREPARING, READY }
+enum class BoardTab(val label: String) {
+    NEW("New"), PREPARING("Preparing"), READY("Ready");
+
+    /** The tab after this one, or null for the last ("Swipe for {next} →" hint). */
+    fun next(): BoardTab? = entries.getOrNull(ordinal + 1)
+}
 
 /** Active orders bucketed by kitchen stage for the board layout. */
 data class ActiveBoard(

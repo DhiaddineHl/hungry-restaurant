@@ -26,10 +26,10 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "com.hungry.restaurant.pos"
 
         // The hungry-app API gateway. Defaults to the dev machine's current LAN IP
-        // (192.168.95.214) that its docker-compose stack is actually reachable on — a
-        // POS terminal on the same Wi-Fi reaches the gateway on :8082. Override per-build
-        // with `-PapiBaseUrl=https://...` (e.g. a deployed gateway) without editing source;
-        // this default will need updating again if the dev machine's IP changes (DHCP).
+        // (matches PUBLIC_HOST in hungry-backend/.env) - a real POS terminal on the same
+        // Wi-Fi reaches the gateway on :8082 here. Override per-build with
+        // `-PapiBaseUrl=https://...` (e.g. a deployed gateway) without editing source; this
+        // default will need updating again if the dev machine's IP changes (DHCP).
         val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
             ?: "http://172.20.10.3:8082/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)

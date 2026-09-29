@@ -40,7 +40,13 @@ fun HistoryOrderRow(order: Order, onClick: () -> Unit, modifier: Modifier = Modi
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("#${order.code} · ${order.customerName}", style = type.bodyStrong, color = c.ink)
+            Text(
+                "#${order.code} · ${order.customerName}",
+                style = type.bodyStrong,
+                color = c.ink,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
             Text(
                 "${dateTime(order.placedAtMillis)} · ${order.itemCount} items",
                 style = type.caption,

@@ -59,7 +59,10 @@ import com.hungry.restaurant.pos.ui.theme.HungryRadius
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private val COLUMN_WIDTH = 296.dp
+// Full width, screen minus the 16dp margin on each side - no next-column peek per the
+// updated design system ("§5 Board columns"). The swipe affordance is now a text hint
+// below the last card instead.
+private val COLUMN_WIDTH = 328.dp
 private val COLUMN_GAP = 12.dp
 
 @Composable
@@ -129,7 +132,7 @@ fun ActiveOrdersScreen(
             state = pagerState,
             pageSize = PageSize.Fixed(COLUMN_WIDTH),
             pageSpacing = COLUMN_GAP,
-            contentPadding = PaddingValues(start = 16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) { page ->
             val tab = BoardTab.entries[page]
@@ -150,6 +153,7 @@ fun ActiveOrdersScreen(
                 onMarkReady = { viewModel.markReady(it) },
                 onPrint = { viewModel.print(it) },
                 onTestAlertSound = viewModel::testAlertSound,
+                onSwipeNext = { scope.launch { pagerState.animateScrollToPage(tab.ordinal + 1) } },
             )
         }
     }
@@ -325,6 +329,7 @@ private fun BoardColumn(
     onMarkReady: (Order) -> Unit,
     onPrint: (Order) -> Unit,
     onTestAlertSound: () -> Unit,
+    onSwipeNext: () -> Unit,
 ) {
     if (orders.isEmpty()) {
         if (tab == BoardTab.NEW) {
@@ -362,6 +367,22 @@ private fun BoardColumn(
                     onReject = if (online) { { onReject(order) } } else null,
                     onMarkReady = if (online) { { onMarkReady(order) } } else null,
                     onPrint = if (online) { { onPrint(order) } } else null,
+                )
+            }
+        }
+        // "No peek" board columns (§5): a text hint replaces the old peeking-next-column
+        // affordance. The last tab (Ready) has nothing after it, so it gets no hint.
+        tab.next()?.let { next ->
+            item {
+                androidx.compose.material3.Text(
+                    "Swipe for ${next.label} →",
+                    style = Hungry.type.label,
+                    color = Hungry.colors.inkMuted,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onSwipeNext)
+                        .padding(top = 4.dp, bottom = 8.dp),
                 )
             }
         }

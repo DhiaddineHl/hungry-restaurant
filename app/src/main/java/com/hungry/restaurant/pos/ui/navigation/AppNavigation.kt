@@ -34,6 +34,7 @@ import com.hungry.restaurant.pos.ui.screens.incoming.IncomingOrderAlertScreen
 import com.hungry.restaurant.pos.ui.screens.login.LoginScreen
 import com.hungry.restaurant.pos.ui.screens.menu.MenuScreen
 import com.hungry.restaurant.pos.ui.screens.settings.SettingsScreen
+import com.hungry.restaurant.pos.ui.screens.splash.SplashScreen
 import com.hungry.restaurant.pos.ui.components.BottomNavItem
 import com.hungry.restaurant.pos.ui.components.HungryBottomNav
 import com.hungry.restaurant.pos.ui.components.HungryToast
@@ -112,8 +113,17 @@ fun AppNavigation() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.LOGIN,
+            startDestination = Routes.SPLASH,
         ) {
+            composable(Routes.SPLASH) {
+                SplashScreen(
+                    onFinished = {
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                    },
+                )
+            }
             composable(Routes.LOGIN) {
                 LoginScreen(
                     onLoginSuccess = {
