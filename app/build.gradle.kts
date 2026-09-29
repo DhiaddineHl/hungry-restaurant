@@ -25,22 +25,20 @@ android {
         // Keycloak client's registered redirect URI.
         manifestPlaceholders["appAuthRedirectScheme"] = "com.hungry.restaurant.pos"
 
-        // The hungry-app API gateway. Defaults to the dev machine's current LAN IP
-        // (matches PUBLIC_HOST in hungry-backend/.env) - a real POS terminal on the same
-        // Wi-Fi reaches the gateway on :8082 here. Override per-build with
-        // `-PapiBaseUrl=https://...` (e.g. a deployed gateway) without editing source; this
-        // default will need updating again if the dev machine's IP changes (DHCP).
+        // The hungry-app API gateway. Points at the staging deployment by default - override
+        // per-build with `-PapiBaseUrl=http://<lan-ip>:8082/` for a local dev backend instead
+        // (see git history for that default) without editing source.
         val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?)
-            ?: "http://172.20.10.3:8082/"
+            ?: "https://hungry-gateway-staging.up.railway.app/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
 
         // Keycloak, reached DIRECTLY (not through the gateway - same reasoning as the
         // customer app's EXPO_PUBLIC_KEYCLOAK_URL: the gateway only routes to hungry-app,
-        // so /realms/... isn't one of its routes). Same dev-machine LAN IP as apiBaseUrl,
-        // on :8081. Override with `-PkeycloakBaseUrl=https://...` for a deployed Keycloak
-        // without editing source.
+        // so /realms/... isn't one of its routes). Staging by default; override with
+        // `-PkeycloakBaseUrl=http://<lan-ip>:8081` for a local dev Keycloak without editing
+        // source.
         val keycloakBaseUrl = (project.findProperty("keycloakBaseUrl") as String?)
-            ?: "http://172.20.10.3:8081"
+            ?: "https://hungry-keycloak-staging.up.railway.app/"
         buildConfigField("String", "KEYCLOAK_BASE_URL", "\"$keycloakBaseUrl\"")
     }
 
